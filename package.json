@@ -1,0 +1,22 @@
+{
+  "name": "kaizeninst",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "pnpm -r --parallel run dev",
+    "build": "pnpm -r run build",
+    "start": "pnpm -r run start",
+    "lint": "eslint . --ext js,jsx --max-warnings=0",
+    "format": "prettier --write ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.15.1",
+  "devDependencies": {
+    "eslint": "^9.34.0",
+    "prettier": "^3.6.2"
+  }
+}
