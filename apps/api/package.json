@@ -9,7 +9,11 @@
     "dev": "nodemon --watch src --ext js --exec \"node src/index.js\"",
     "build": "echo \"(JS only) nothing to build\"",
     "start": "node src/index.js",
-    "lint": "echo \"add eslint later\""
+    "lint": "echo \"add eslint later\"",
+    "db:migrate": "sequelize-cli db:migrate --config config/config.cjs",
+    "db:migrate:undo": "sequelize-cli db:migrate:undo --config config/config.cjs",
+    "db:seed": "sequelize-cli db:seed:all --config config/config.cjs",
+    "db:seed:undo": "sequelize-cli db:seed:undo:all --config config/config.cjs"
   },
   "keywords": [],
   "author": "",
@@ -19,9 +23,12 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "mysql2": "^3.14.4",
+    "sequelize": "^6.37.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "sequelize-cli": "^6.6.3"
   }
 }

@@ -3,6 +3,9 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import usersRoute from "./routes/users.js";
+import { testConnection, sequelize } from "./db/sequelize.js";
+import { User } from "./models/User.js";
 
 const app = express();
 
@@ -21,8 +24,13 @@ app.use(
 );
 
 // Health check
-app.get("/health", (req, res) => {
-  res.json({ ok: true, uptime: process.uptime() });
+app.get("/health", async (_req, res) => {
+  try {
+    await sequelize.authenticate();
+    res.json({ ok: true, db: true });
+  } catch {
+    res.json({ ok: true, db: false });
+  }
 });
 
 // Example API
@@ -30,7 +38,12 @@ app.get("/api/hello", (req, res) => {
   res.json({ message: "Hello from Express API" });
 });
 
+app.use("/api/users", usersRoute);
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
+app.listen(PORT, async () => {
+  await testConnection();
+  // sync model กับ table (ถ้า table ไม่มี มันจะสร้างให้)
+  await sequelize.sync();
+  console.log(`🚀 API listening on http://localhost:${PORT}`);
 });
