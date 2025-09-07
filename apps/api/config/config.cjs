@@ -9,13 +9,7 @@ module.exports = {
     port: Number(process.env.DB_PORT || 3306),
     dialect: "mysql",
     timezone: "+07:00",
-    dialectOptions: {
-      charset: "utf8mb4",
-    },
-    define: {
-      // ตัวเลือกค่าเริ่มต้นเวลา generate model (ไม่บังคับ)
-      underscored: false,
-      freezeTableName: true,
-    },
+    dialectOptions: { charset: "utf8mb4" },
+    define: { freezeTableName: true },
   },
 };
