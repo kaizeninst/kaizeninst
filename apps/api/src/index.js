@@ -3,9 +3,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import usersRoute from "./routes/users.js";
 import { testConnection, sequelize } from "./db/sequelize.js";
-import { User } from "./models/User.js";
 
 const app = express();
 
@@ -37,8 +35,6 @@ app.get("/health", async (_req, res) => {
 app.get("/api/hello", (req, res) => {
   res.json({ message: "Hello from Express API" });
 });
-
-app.use("/api/users", usersRoute);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, async () => {

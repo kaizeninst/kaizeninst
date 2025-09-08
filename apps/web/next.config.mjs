@@ -1,5 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "placehold.co",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+    // หรือแบบสั้นก็ได้
+    // domains: ['placehold.co'],
+  },
   async rewrites() {
     return [
       {
