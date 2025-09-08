@@ -9,8 +9,6 @@ const nextConfig = {
         pathname: "/**",
       },
     ],
-    // หรือแบบสั้นก็ได้
-    // domains: ['placehold.co'],
   },
   async rewrites() {
     return [
