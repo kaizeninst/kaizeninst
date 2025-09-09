@@ -14,15 +14,13 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // สำคัญ: ส่งคุกกี้จาก API กลับมาเก็บไว้
+        credentials: "include",
         body: JSON.stringify({ username, password }),
       });
-
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
@@ -31,8 +29,18 @@ export default function AdminLoginPage() {
         return;
       }
 
-      // สำเร็จ → ไปหน้าหลังบ้าน (เปลี่ยนปลายทางได้)
-      router.replace("/admin");
+      const me = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" })
+        .then((r) => r.json())
+        .catch(() => ({}));
+
+      if (!me?.authenticated) {
+        setError("Cookie not set. Check CORS/cookie options.");
+        setSubmitting(false);
+        return;
+      }
+
+      setSubmitting(false);
+      router.replace("/admin/dashboard");
     } catch (err) {
       setError("Network error. Please try again.");
       setSubmitting(false);

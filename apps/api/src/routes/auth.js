@@ -28,7 +28,7 @@ router.post("/login", async (req, res) => {
     const token = signAdminToken({ id: staff.id, username: staff.username, role: staff.role });
 
     // set httpOnly cookie
-    res.cookie("AccessToken", token, {
+    res.cookie("accessToken", token, {
       httpOnly: true,
       sameSite: "lax", // ถ้า cross-site อาจใช้ 'none' + secure:true
       secure: false, // โปรดตั้ง true ใน production (HTTPS)
@@ -52,10 +52,11 @@ router.post("/login", async (req, res) => {
 // GET /api/auth/me (ตรวจว่า token ยังใช้ได้ไหม)
 router.get("/me", (req, res) => {
   try {
-    const token = req.cookies?.token || req.headers.authorization?.replace(/^Bearer\s+/i, "");
-    if (!token) return res.status(200).json({ authenticated: false });
+    const accessToken =
+      req.cookies?.accessToken || req.headers.authorization?.replace(/^Bearer\s+/i, "");
+    if (!accessToken) return res.status(200).json({ authenticated: false });
 
-    const base64 = token.split(".")[1];
+    const base64 = accessToken.split(".")[1];
     const payload = JSON.parse(Buffer.from(base64, "base64").toString("utf8") || "{}");
 
     return res.json({ authenticated: true, user: payload });
@@ -66,7 +67,7 @@ router.get("/me", (req, res) => {
 
 // POST /api/auth/logout
 router.post("/logout", (req, res) => {
-  res.clearCookie("token");
+  res.clearCookie("accessToken");
   return res.json({ message: "Logged out" });
 });
 
