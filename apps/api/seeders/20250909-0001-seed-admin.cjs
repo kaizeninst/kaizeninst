@@ -10,7 +10,7 @@ module.exports = {
     await queryInterface.bulkInsert("staff", [
       {
         name: "System Admin",
-        email: "admin@kaizeninst.local",
+        username: "admin",
         password_hash: hash,
         role: "admin",
         status: "active",
@@ -22,6 +22,6 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.bulkDelete("staff", { email: "admin@kaizeninst.local" });
+    await queryInterface.bulkDelete("staff", { username: "admin" });
   },
 };
