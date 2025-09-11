@@ -10,8 +10,7 @@ export default function ContactPage() {
     subject: "",
     message: "",
   });
-  const [submissionStatus, setSubmissionStatus] =
-    (useState < "idle") | "success" | ("error" > "idle");
+  const [submissionStatus, setSubmissionStatus] = useState("idle");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
