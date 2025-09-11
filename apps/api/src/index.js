@@ -7,12 +7,13 @@ import cookieParser from "cookie-parser";
 
 import { testConnection, sequelize } from "./db/sequelize.js";
 import authRoute from "./routes/auth.js";
+import categoryRoutes from "./routes/categories.js";
+import productRoutes from "./routes/products.js";
+import orderRoutes from "./routes/orders.js";
+import quoteRoutes from "./routes/quotes.js";
+import staffRoutes from "./routes/staff.js";
 
 const app = express();
-
-// If behind a reverse proxy (e.g., Nginx, Render, Railway), enable this.
-// It helps secure cookies work correctly with HTTPS.
-// app.set('trust proxy', 1);
 
 // Security headers
 app.use(helmet());
@@ -23,7 +24,7 @@ app.use(express.json());
 // Parse cookies (for httpOnly JWT cookie)
 app.use(cookieParser());
 
-// CORS (allow credentials so browser can send cookies)
+// CORS
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN || "http://localhost:3000",
@@ -43,11 +44,15 @@ app.get("/health", async (_req, res) => {
 
 // Routes
 app.use("/api/auth", authRoute);
+app.use("/api/categories", categoryRoutes);
+// app.use("/api/products", productRoutes);
+// app.use("/api/orders", orderRoutes);
+// app.use("/api/quotes", quoteRoutes);
+// app.use("/api/staff", staffRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, async () => {
   await testConnection();
-  // sync model กับ table (ถ้าไม่มี มันจะสร้างให้ตาม model)
-  await sequelize.sync();
+  await sequelize.sync(); // sync model กับ table
   console.log(`🚀 API listening on http://localhost:${PORT}`);
 });
