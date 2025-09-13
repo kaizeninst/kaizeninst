@@ -18,6 +18,21 @@ export default function CategoriesPage() {
 
   const [expanded, setExpanded] = useState({});
 
+  const handleStatusUpdate = (id, newStatus) => {
+    setCategories((prev) =>
+      prev.map((cat) =>
+        cat.id === id
+          ? { ...cat, status: newStatus }
+          : {
+              ...cat,
+              children: cat.children.map((child) =>
+                child.id === id ? { ...child, status: newStatus } : child
+              ),
+            }
+      )
+    );
+  };
+
   async function fetchCategories(p = page) {
     setLoading(true);
     try {
@@ -79,6 +94,7 @@ export default function CategoriesPage() {
                     category={cat}
                     expanded={expanded}
                     toggleExpand={toggleExpand}
+                    onStatusUpdate={handleStatusUpdate}
                   />
                 ))}
               </tbody>

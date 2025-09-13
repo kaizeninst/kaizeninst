@@ -1,15 +1,18 @@
-"use client";
-
-import { Edit, Trash, ChevronRight, ChevronDown } from "lucide-react";
 import StatusToggle from "./StatusToggle";
+import { Edit, Trash, ChevronRight, ChevronDown } from "lucide-react";
 
-export default function CategoryRow({ category, depth = 0, expanded, toggleExpand }) {
+export default function CategoryRow({
+  category,
+  depth = 0,
+  expanded,
+  toggleExpand,
+  onStatusUpdate,
+}) {
   const hasChildren = category.children && category.children.length > 0;
   const productCount = category.productsCount ?? 0;
 
   return (
     <>
-      {/* Row */}
       <tr className={depth === 0 ? "border-t bg-gray-50" : "border-t"}>
         <td className="px-4 py-2">
           <div className="flex items-center gap-2" style={{ paddingLeft: depth * 20 }}>
@@ -33,7 +36,9 @@ export default function CategoryRow({ category, depth = 0, expanded, toggleExpan
         <td className="px-4 py-2">
           <StatusToggle
             category={category}
-            onStatusChange={(newStatus) => (category.status = newStatus)}
+            onStatusChange={(newStatus) => {
+              onStatusUpdate?.(category.id, newStatus); // ✅ ส่งขึ้นไปบอก parent
+            }}
           />
         </td>
         <td className="px-4 py-2">{productCount}</td>
@@ -57,6 +62,7 @@ export default function CategoryRow({ category, depth = 0, expanded, toggleExpan
             depth={depth + 1}
             expanded={expanded}
             toggleExpand={toggleExpand}
+            onStatusUpdate={onStatusUpdate} // ✅ ส่งต่อไป child ด้วย
           />
         ))}
     </>

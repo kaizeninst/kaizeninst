@@ -8,7 +8,7 @@ export default function StatusToggle({ category, onStatusChange }) {
       });
       const data = await res.json();
       if (res.ok) {
-        onStatusChange?.(data.status); // แจ้งกลับว่า status เปลี่ยนแล้ว
+        onStatusChange?.(data.status);
       } else {
         alert(data.error || "Failed to update");
       }
@@ -21,7 +21,6 @@ export default function StatusToggle({ category, onStatusChange }) {
 
   return (
     <div className="flex items-center gap-2">
-      {/* Toggle switch */}
       <button
         onClick={handleToggle}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
@@ -34,8 +33,6 @@ export default function StatusToggle({ category, onStatusChange }) {
           }`}
         />
       </button>
-
-      {/* Label */}
       <span
         className={`rounded px-2 py-1 text-xs font-medium ${
           isActive ? "bg-black text-white" : "bg-gray-200 text-gray-600"
