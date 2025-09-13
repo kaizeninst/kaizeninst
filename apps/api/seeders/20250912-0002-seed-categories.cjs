@@ -103,6 +103,16 @@ module.exports = {
         created_at: new Date(),
         updated_at: new Date(),
       },
+      {
+        id: 11,
+        name: "LED Lighting 2",
+        slug: "led-lighting-2",
+        parent_id: 4,
+        status: "active",
+        sort_order: 1,
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
     ]);
   },
 

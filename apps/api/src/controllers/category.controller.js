@@ -33,7 +33,7 @@ export const getAllCategories = async (req, res) => {
       where,
       offset,
       limit,
-      order: [["sort_order", "ASC"]],
+      order: [["sort_order", "ASC"]], // sort parent
       include: [
         {
           model: Category,
@@ -49,6 +49,8 @@ export const getAllCategories = async (req, res) => {
             "parent_id",
           ],
           include: [{ model: Product, attributes: ["id"] }],
+          separate: true,
+          order: [["sort_order", "ASC"]],
         },
         { model: Product, attributes: ["id"] },
       ],
