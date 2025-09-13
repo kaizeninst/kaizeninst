@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { CategoryRow } from "../../../../components/categories";
 
 export default function CategoriesPage() {
@@ -17,6 +17,16 @@ export default function CategoriesPage() {
   });
 
   const [expanded, setExpanded] = useState({});
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // ✅ ทำ debounce (รอ 300ms ก่อนอัปเดตค่า debouncedSearch)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   const handleStatusUpdate = (id, newStatus) => {
     setCategories((prev) =>
@@ -33,10 +43,12 @@ export default function CategoriesPage() {
     );
   };
 
-  async function fetchCategories(p = page) {
+  async function fetchCategories(p = page, s = debouncedSearch) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/categories?page=${p}&limit=${limit}`);
+      const res = await fetch(
+        `/api/categories?page=${p}&limit=${limit}&search=${encodeURIComponent(s)}`
+      );
       const data = await res.json();
 
       const parents = (data?.data || []).filter((cat) => !cat.parent_id);
@@ -51,8 +63,8 @@ export default function CategoriesPage() {
   }
 
   useEffect(() => {
-    fetchCategories(1);
-  }, []);
+    fetchCategories(1, debouncedSearch);
+  }, [debouncedSearch]);
 
   const toggleExpand = (id) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -61,11 +73,25 @@ export default function CategoriesPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold">Categories</h1>
-        <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white shadow hover:bg-blue-700">
-          <Plus className="h-4 w-4" /> Add Category
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {/* 🔎 Search Section */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search categories..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 sm:w-64"
+            />
+          </div>
+
+          <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white shadow hover:bg-blue-700">
+            <Plus className="h-4 w-4" /> Add Category
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -111,7 +137,7 @@ export default function CategoriesPage() {
             <div className="flex gap-2">
               <button
                 disabled={pagination.page === 1}
-                onClick={() => fetchCategories(page - 1)}
+                onClick={() => fetchCategories(page - 1, debouncedSearch)}
                 className={`rounded border px-3 py-1 ${
                   pagination.page === 1
                     ? "cursor-not-allowed bg-gray-100 text-gray-400"
@@ -124,7 +150,7 @@ export default function CategoriesPage() {
               {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
-                  onClick={() => fetchCategories(p)}
+                  onClick={() => fetchCategories(p, debouncedSearch)}
                   className={`rounded border px-3 py-1 ${
                     page === p ? "bg-blue-600 text-white" : "bg-white hover:bg-gray-50"
                   }`}
@@ -135,7 +161,7 @@ export default function CategoriesPage() {
 
               <button
                 disabled={pagination.page === pagination.totalPages}
-                onClick={() => fetchCategories(page + 1)}
+                onClick={() => fetchCategories(page + 1, debouncedSearch)}
                 className={`rounded border px-3 py-1 ${
                   pagination.page === pagination.totalPages
                     ? "cursor-not-allowed bg-gray-100 text-gray-400"
