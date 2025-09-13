@@ -5,6 +5,20 @@ const { Category, Product } = models;
 // ✅ CREATE
 export const createCategory = async (req, res) => {
   try {
+    const { name, slug, parent_id = null, sort_order } = req.body;
+
+    // ✅ กัน sort_order ซ้ำภายใต้ parent เดียวกัน
+    if (sort_order !== undefined) {
+      const exists = await Category.findOne({
+        where: { parent_id, sort_order },
+      });
+      if (exists) {
+        return res.status(400).json({
+          error: `Sort order ${sort_order} already exists in this parent category`,
+        });
+      }
+    }
+
     const category = await Category.create(req.body);
     res.status(201).json(category);
   } catch (err) {
@@ -18,9 +32,22 @@ export const getAllCategories = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
-    const { status, search } = req.query;
+    const { status, search, parent_id } = req.query;
 
-    const where = { parent_id: null }; // ✅ ดึงเฉพาะ parent เท่านั้น
+    const where = {};
+
+    // ✅ logic parent_id
+    if (parent_id === undefined || parent_id === "" || parent_id === "null") {
+      // ไม่ส่ง / ส่งว่าง / ส่ง "null" → top-level
+      where.parent_id = null;
+    } else {
+      const parsed = parseInt(parent_id, 10);
+      if (isNaN(parsed)) {
+        return res.status(400).json({ error: "parent_id must be a number" });
+      }
+      where.parent_id = parsed;
+    }
+
     if (status) where.status = status;
     if (search) {
       where[Op.or] = [
@@ -33,7 +60,7 @@ export const getAllCategories = async (req, res) => {
       where,
       offset,
       limit,
-      order: [["sort_order", "ASC"]], // sort parent
+      order: [["sort_order", "ASC"]],
       include: [
         {
           model: Category,
@@ -154,9 +181,50 @@ export const updateCategory = async (req, res) => {
     const category = await Category.findByPk(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
 
-    await category.update(req.body);
+    let { parent_id = category.parent_id, sort_order = category.sort_order } = req.body;
+
+    // ✅ แปลง parent_id ให้ถูกต้อง
+    if (parent_id === "" || parent_id === "null") {
+      parent_id = null;
+    } else if (parent_id !== null) {
+      const parsed = parseInt(parent_id, 10);
+      if (isNaN(parsed)) {
+        return res.status(400).json({ error: "parent_id must be a number" });
+      }
+      parent_id = parsed;
+    }
+
+    // ✅ แปลง sort_order ให้เป็นตัวเลขเสมอ
+    if (sort_order !== undefined) {
+      sort_order = parseInt(sort_order, 10);
+      if (isNaN(sort_order)) {
+        return res.status(400).json({ error: "sort_order must be a number" });
+      }
+
+      // ✅ กัน sort_order ซ้ำ (ยกเว้นอันเดิมของตัวเอง)
+      const exists = await Category.findOne({
+        where: {
+          parent_id,
+          sort_order,
+          id: { [Op.ne]: category.id },
+        },
+      });
+      if (exists) {
+        return res.status(400).json({
+          error: `Sort order ${sort_order} already exists in this parent category`,
+        });
+      }
+    }
+
+    await category.update({
+      ...req.body,
+      parent_id,
+      sort_order,
+    });
+
     res.json(category);
   } catch (err) {
+    console.error("PUT /categories/:id error:", err);
     res.status(400).json({ error: err.message });
   }
 };

@@ -11,8 +11,10 @@ export default function CategoryModal({ isOpen, onClose, mode, category, onSucce
   });
 
   const [parents, setParents] = useState([]);
+  const [originalParentId, setOriginalParentId] = useState(null);
+  const [originalSortOrder, setOriginalSortOrder] = useState(null);
 
-  // โหลดรายชื่อ parent categories
+  // โหลด parent categories
   useEffect(() => {
     if (isOpen) {
       fetch("/api/categories?limit=100")
@@ -24,16 +26,19 @@ export default function CategoryModal({ isOpen, onClose, mode, category, onSucce
     }
   }, [isOpen]);
 
+  // set ค่า default ตอนเปิด modal
   useEffect(() => {
     if (mode === "edit" && category) {
       setForm({
         name: category.name || "",
         slug: category.slug || "",
-        parent_id: category.parent_id || null,
+        parent_id: category.parent_id ?? null,
         sort_order: category.sort_order || 0,
         status: category.status || "active",
       });
-    } else {
+      setOriginalParentId(category.parent_id ?? null);
+      setOriginalSortOrder(category.sort_order || 0);
+    } else if (mode === "create") {
       setForm({
         name: "",
         slug: "",
@@ -41,8 +46,39 @@ export default function CategoryModal({ isOpen, onClose, mode, category, onSucce
         sort_order: 0,
         status: "active",
       });
+      setOriginalParentId(null);
+      setOriginalSortOrder(null);
     }
   }, [mode, category]);
+
+  // ✅ เวลาเปลี่ยน parent → handle order
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const pid = form.parent_id ?? null;
+
+    // ถ้าเป็น edit และเลือกกลับไป parent เดิม → คืนค่าเดิม
+    if (mode === "edit" && pid === originalParentId) {
+      setForm((prev) => ({
+        ...prev,
+        sort_order: originalSortOrder,
+      }));
+      return;
+    }
+
+    // ถ้าเป็น create หรือเลือก parent ใหม่ → คำนวณ max+1
+    fetch(`/api/categories?parent_id=${pid}&limit=1000`)
+      .then((res) => res.json())
+      .then((data) => {
+        const list = data?.data || [];
+        const maxOrder = list.length > 0 ? Math.max(...list.map((c) => c.sort_order || 0)) : 0;
+        setForm((prev) => ({
+          ...prev,
+          sort_order: maxOrder + 1,
+        }));
+      })
+      .catch((err) => console.error("Error fetching sort_order:", err));
+  }, [form.parent_id, isOpen, mode, originalParentId, originalSortOrder]);
 
   if (!isOpen) return null;
 
@@ -50,7 +86,14 @@ export default function CategoryModal({ isOpen, onClose, mode, category, onSucce
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: name === "parent_id" ? (value === "" ? null : Number(value)) : value,
+      [name]:
+        name === "parent_id"
+          ? value === ""
+            ? null
+            : Number(value)
+          : name === "sort_order"
+            ? Number(value)
+            : value,
     }));
   };
 
@@ -69,7 +112,7 @@ export default function CategoryModal({ isOpen, onClose, mode, category, onSucce
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
 
-      onSuccess(); // reload categories
+      onSuccess();
       onClose();
     } catch (err) {
       alert(err.message);
