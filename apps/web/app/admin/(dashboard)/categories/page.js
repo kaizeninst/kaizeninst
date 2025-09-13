@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash } from "lucide-react";
+import { Plus, Edit, Trash, ChevronRight, ChevronDown } from "lucide-react";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
@@ -15,13 +15,18 @@ export default function CategoriesPage() {
     totalPages: 1,
   });
 
+  const [expanded, setExpanded] = useState({});
+
   async function fetchCategories(p = page) {
     setLoading(true);
     try {
       const res = await fetch(`/api/categories?page=${p}&limit=${limit}`);
       const data = await res.json();
 
-      setCategories(data?.data || []);
+      // ✅ กรองเฉพาะ parent เท่านั้น
+      const parents = (data?.data || []).filter((cat) => !cat.parent_id);
+
+      setCategories(parents);
       setPagination(data?.pagination || { total: 0, page: 1, limit, totalPages: 1 });
       setPage(data?.pagination?.page || p);
     } catch (err) {
@@ -34,6 +39,10 @@ export default function CategoriesPage() {
   useEffect(() => {
     fetchCategories(1);
   }, []);
+
+  const toggleExpand = (id) => {
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   return (
     <div className="p-6">
@@ -56,43 +65,23 @@ export default function CategoriesPage() {
             <table className="min-w-full rounded-lg border border-gray-200 bg-white shadow-sm">
               <thead className="bg-gray-100 text-sm text-gray-700">
                 <tr>
-                  <th className="px-4 py-2 text-left">ID</th>
-                  <th className="px-4 py-2 text-left">Name</th>
-                  <th className="px-4 py-2 text-left">Slug</th>
-                  <th className="px-4 py-2 text-left">Parent</th>
-                  <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Actions</th>
+                  {/* ❌ เอา ID ออก */}
+                  <th className="w-4/12 px-4 py-2 text-left">Name</th>
+                  <th className="w-2/12 px-4 py-2 text-left">Slug</th>
+                  <th className="w-1/12 px-4 py-2 text-left">Sort</th>
+                  <th className="w-1/12 px-4 py-2 text-left">Status</th>
+                  <th className="w-1/12 px-4 py-2 text-left">Products</th>
+                  <th className="w-2/12 px-4 py-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
                 {categories.map((cat) => (
-                  <tr key={cat.id} className="border-t">
-                    <td className="px-4 py-2">{cat.id}</td>
-                    <td className="px-4 py-2">{cat.name}</td>
-                    <td className="px-4 py-2 text-gray-600">{cat.slug}</td>
-                    <td className="px-4 py-2 text-gray-600">
-                      {cat.parent_id ? `Parent #${cat.parent_id}` : "-"}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`rounded px-2 py-1 text-xs font-medium ${
-                          cat.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {cat.status}
-                      </span>
-                    </td>
-                    <td className="flex gap-2 px-4 py-2">
-                      <button className="rounded bg-gray-100 p-2 hover:bg-gray-200">
-                        <Edit className="h-4 w-4 text-blue-600" />
-                      </button>
-                      <button className="rounded bg-gray-100 p-2 hover:bg-gray-200">
-                        <Trash className="h-4 w-4 text-red-600" />
-                      </button>
-                    </td>
-                  </tr>
+                  <CategoryRow
+                    key={cat.id}
+                    category={cat}
+                    expanded={expanded}
+                    toggleExpand={toggleExpand}
+                  />
                 ))}
               </tbody>
             </table>
@@ -146,5 +135,81 @@ export default function CategoriesPage() {
         </>
       )}
     </div>
+  );
+}
+
+/** ✅ Category Row (show parent + children only) */
+function CategoryRow({ category, expanded, toggleExpand }) {
+  const hasChildren = category.children && category.children.length > 0;
+  const productCount = category.Products ? category.Products.length : 0;
+
+  return (
+    <>
+      {/* Parent row */}
+      <tr className="border-t bg-gray-50">
+        <td className="px-4 py-2">
+          <div className="flex items-center gap-2">
+            {hasChildren && (
+              <button
+                onClick={() => toggleExpand(category.id)}
+                className="rounded p-1 hover:bg-gray-100"
+              >
+                {expanded[category.id] ? (
+                  <ChevronDown className="h-4 w-4 text-gray-600" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-gray-600" />
+                )}
+              </button>
+            )}
+            <span className="font-medium">{category.name}</span>
+          </div>
+        </td>
+        <td className="px-4 py-2 text-gray-600">{category.slug}</td>
+        <td className="px-4 py-2">{category.sort_order}</td>
+        <td className="px-4 py-2">
+          <span
+            className={`rounded px-2 py-1 text-xs font-medium ${
+              category.status === "active"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {category.status}
+          </span>
+        </td>
+        <td className="px-4 py-2">{productCount}</td>
+        <td className="flex gap-2 px-4 py-2">
+          <button className="rounded bg-gray-100 p-2 hover:bg-gray-200">
+            <Edit className="h-4 w-4 text-blue-600" />
+          </button>
+          <button className="rounded bg-gray-100 p-2 hover:bg-gray-200">
+            <Trash className="h-4 w-4 text-red-600" />
+          </button>
+        </td>
+      </tr>
+
+      {/* Children rows (inline, ไม่แสดง ID) */}
+      {hasChildren &&
+        expanded[category.id] &&
+        category.children.map((child) => (
+          <tr key={child.id} className="border-t">
+            <td className="px-4 py-2 pl-10">— {child.name}</td>
+            <td className="px-4 py-2 text-gray-600">{child.slug}</td>
+            <td className="px-4 py-2">{child.sort_order ?? "-"}</td>
+            <td className="px-4 py-2">
+              <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">child</span>
+            </td>
+            <td className="px-4 py-2">0</td>
+            <td className="flex gap-2 px-4 py-2">
+              <button className="rounded bg-gray-100 p-2 hover:bg-gray-200">
+                <Edit className="h-4 w-4 text-blue-600" />
+              </button>
+              <button className="rounded bg-gray-100 p-2 hover:bg-gray-200">
+                <Trash className="h-4 w-4 text-red-600" />
+              </button>
+            </td>
+          </tr>
+        ))}
+    </>
   );
 }
