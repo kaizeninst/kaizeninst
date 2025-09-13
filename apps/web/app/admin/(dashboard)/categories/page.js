@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { CategoryRow } from "../../../../components/categories";
+import { CategoryRow, CategoryModal } from "../../../../components/categories";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
@@ -20,7 +20,12 @@ export default function CategoriesPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // ✅ ทำ debounce (รอ 300ms ก่อนอัปเดตค่า debouncedSearch)
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("create");
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  // debounce search
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
@@ -52,12 +57,27 @@ export default function CategoriesPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        fetchCategories(page, debouncedSearch); // รีโหลดใหม่
+        fetchCategories(page, debouncedSearch);
       } else {
         alert(data.error || "Failed to move");
       }
     } catch (err) {
       console.error("Move error:", err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this category?")) return;
+    try {
+      const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        fetchCategories(page, debouncedSearch);
+      } else {
+        alert(data.error || "Failed to delete");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
     }
   };
 
@@ -94,7 +114,7 @@ export default function CategoriesPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold">Categories</h1>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {/* 🔎 Search Section */}
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
@@ -106,7 +126,14 @@ export default function CategoriesPage() {
             />
           </div>
 
-          <button className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white shadow hover:bg-blue-700">
+          <button
+            onClick={() => {
+              setModalMode("create");
+              setSelectedCategory(null);
+              setModalOpen(true);
+            }}
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white shadow hover:bg-blue-700"
+          >
             <Plus className="h-4 w-4" /> Add Category
           </button>
         </div>
@@ -140,6 +167,12 @@ export default function CategoriesPage() {
                     toggleExpand={toggleExpand}
                     onStatusUpdate={handleStatusUpdate}
                     onMove={handleMove}
+                    onEdit={(c) => {
+                      setModalMode("edit");
+                      setSelectedCategory(c);
+                      setModalOpen(true);
+                    }}
+                    onDelete={handleDelete}
                   />
                 ))}
               </tbody>
@@ -193,6 +226,15 @@ export default function CategoriesPage() {
           </div>
         </>
       )}
+
+      {/* Modal */}
+      <CategoryModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        mode={modalMode}
+        category={selectedCategory}
+        onSuccess={() => fetchCategories(page, debouncedSearch)}
+      />
     </div>
   );
 }

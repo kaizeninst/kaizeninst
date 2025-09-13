@@ -7,7 +7,9 @@ export default function CategoryRow({
   expanded,
   toggleExpand,
   onStatusUpdate,
-  onMove, // ✅ callback
+  onMove,
+  onEdit,
+  onDelete,
 }) {
   const hasChildren = category.children && category.children.length > 0;
   const productCount = category.productsCount ?? 0;
@@ -35,7 +37,7 @@ export default function CategoryRow({
 
         <td className="px-4 py-2 text-gray-600">{category.slug}</td>
 
-        {/* ✅ Sort + ปุ่มซ้ายขวา */}
+        {/* Sort + ปุ่มซ้ายขวา */}
         <td className="px-4 py-2">
           <div className="flex items-center gap-2">
             <button
@@ -45,6 +47,8 @@ export default function CategoryRow({
             >
               <ArrowUp className="h-4 w-4 text-gray-500" />
             </button>
+
+            <span className="font-medium">{category.sort_order ?? "-"}</span>
 
             <button
               onClick={() => onMove?.(category.id, "down")}
@@ -66,10 +70,16 @@ export default function CategoryRow({
         </td>
         <td className="px-4 py-2">{productCount}</td>
         <td className="flex gap-2 px-4 py-2">
-          <button className="rounded bg-gray-100 p-2 hover:bg-gray-200">
+          <button
+            onClick={() => onEdit?.(category)}
+            className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+          >
             <Edit className="h-4 w-4 text-blue-600" />
           </button>
-          <button className="rounded bg-gray-100 p-2 hover:bg-gray-200">
+          <button
+            onClick={() => onDelete?.(category.id)}
+            className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+          >
             <Trash className="h-4 w-4 text-red-600" />
           </button>
         </td>
@@ -86,7 +96,9 @@ export default function CategoryRow({
             expanded={expanded}
             toggleExpand={toggleExpand}
             onStatusUpdate={onStatusUpdate}
-            onMove={onMove} // ✅ ส่งต่อไป child
+            onMove={onMove}
+            onEdit={onEdit}
+            onDelete={onDelete}
           />
         ))}
     </>
