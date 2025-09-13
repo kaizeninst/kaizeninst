@@ -48,21 +48,12 @@ export const getAllCategories = async (req, res) => {
             "updated_at",
             "parent_id",
           ],
-          include: [
-            {
-              model: Product,
-              attributes: ["id"], // เอาไว้สำหรับนับ
-            },
-          ],
+          include: [{ model: Product, attributes: ["id"] }],
         },
-        {
-          model: Product,
-          attributes: ["id"],
-        },
+        { model: Product, attributes: ["id"] },
       ],
     });
 
-    // ✅ แปลง response ให้มี productsCount
     const data = rows.map((cat) => ({
       id: cat.id,
       name: cat.name,
@@ -177,6 +168,27 @@ export const deleteCategory = async (req, res) => {
     await category.destroy();
     res.json({ message: "Category deleted successfully" });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ TOGGLE STATUS
+export const toggleCategoryStatus = async (req, res) => {
+  try {
+    const category = await Category.findByPk(req.params.id);
+    if (!category) return res.status(404).json({ error: "Category not found" });
+
+    // toggle active/inactive
+    category.status = category.status === "active" ? "inactive" : "active";
+    await category.save();
+
+    res.json({
+      message: "Category status updated",
+      id: category.id,
+      status: category.status,
+    });
+  } catch (err) {
+    console.error("PATCH /categories/:id/toggle error:", err);
     res.status(500).json({ error: err.message });
   }
 };
