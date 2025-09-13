@@ -5,6 +5,7 @@ import {
   getCategoryById,
   updateCategory,
   deleteCategory,
+  toggleCategoryStatus,
 } from "../controllers/category.controller.js";
 import { maybeAuth } from "../middleware/maybeAuth.js";
 
@@ -17,6 +18,7 @@ router.get("/:id", getCategoryById);
 // Protected
 router.post("/", maybeAuth, createCategory);
 router.put("/:id", maybeAuth, updateCategory);
+router.patch("/:id/toggle", maybeAuth, toggleCategoryStatus);
 router.delete("/:id", maybeAuth, deleteCategory);
 
 export default router;
