@@ -43,6 +43,24 @@ export default function CategoriesPage() {
     );
   };
 
+  const handleMove = async (id, direction) => {
+    try {
+      const res = await fetch(`/api/categories/${id}/move`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchCategories(page, debouncedSearch); // รีโหลดใหม่
+      } else {
+        alert(data.error || "Failed to move");
+      }
+    } catch (err) {
+      console.error("Move error:", err);
+    }
+  };
+
   async function fetchCategories(p = page, s = debouncedSearch) {
     setLoading(true);
     try {
@@ -121,6 +139,7 @@ export default function CategoriesPage() {
                     expanded={expanded}
                     toggleExpand={toggleExpand}
                     onStatusUpdate={handleStatusUpdate}
+                    onMove={handleMove}
                   />
                 ))}
               </tbody>

@@ -192,3 +192,41 @@ export const toggleCategoryStatus = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ✅ MOVE UP / DOWN
+export const moveCategory = async (req, res) => {
+  try {
+    const { direction } = req.body; // "up" หรือ "down"
+    const category = await Category.findByPk(req.params.id);
+    if (!category) return res.status(404).json({ error: "Category not found" });
+
+    // หา category ที่ต้องสลับตำแหน่ง
+    const operator = direction === "up" ? Op.lt : Op.gt;
+    const order = direction === "up" ? [["sort_order", "DESC"]] : [["sort_order", "ASC"]];
+
+    const swapWith = await Category.findOne({
+      where: {
+        parent_id: category.parent_id || null,
+        sort_order: { [operator]: category.sort_order },
+      },
+      order,
+    });
+
+    if (!swapWith) {
+      return res.json({ message: "Already at the edge" });
+    }
+
+    // สลับค่า sort_order
+    const temp = category.sort_order;
+    category.sort_order = swapWith.sort_order;
+    swapWith.sort_order = temp;
+
+    await category.save();
+    await swapWith.save();
+
+    res.json({ message: "Category moved", category, swapWith });
+  } catch (err) {
+    console.error("PATCH /categories/:id/move error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};

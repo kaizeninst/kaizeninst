@@ -6,6 +6,7 @@ import {
   updateCategory,
   deleteCategory,
   toggleCategoryStatus,
+  moveCategory,
 } from "../controllers/category.controller.js";
 import { maybeAuth } from "../middleware/maybeAuth.js";
 
@@ -20,5 +21,6 @@ router.post("/", maybeAuth, createCategory);
 router.put("/:id", maybeAuth, updateCategory);
 router.patch("/:id/toggle", maybeAuth, toggleCategoryStatus);
 router.delete("/:id", maybeAuth, deleteCategory);
+router.patch("/:id/move", maybeAuth, moveCategory);
 
 export default router;

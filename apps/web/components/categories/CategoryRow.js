@@ -1,5 +1,5 @@
 import StatusToggle from "./StatusToggle";
-import { Edit, Trash, ChevronRight, ChevronDown } from "lucide-react";
+import { Edit, Trash, ChevronRight, ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
 
 export default function CategoryRow({
   category,
@@ -7,6 +7,7 @@ export default function CategoryRow({
   expanded,
   toggleExpand,
   onStatusUpdate,
+  onMove, // ✅ callback
 }) {
   const hasChildren = category.children && category.children.length > 0;
   const productCount = category.productsCount ?? 0;
@@ -31,13 +32,35 @@ export default function CategoryRow({
             <span className="font-medium">{category.name}</span>
           </div>
         </td>
+
         <td className="px-4 py-2 text-gray-600">{category.slug}</td>
-        <td className="px-4 py-2">{category.sort_order ?? "-"}</td>
+
+        {/* ✅ Sort + ปุ่มซ้ายขวา */}
+        <td className="px-4 py-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onMove?.(category.id, "up")}
+              className="rounded p-1 hover:bg-gray-100"
+              title="Move Up"
+            >
+              <ArrowUp className="h-4 w-4 text-gray-500" />
+            </button>
+
+            <button
+              onClick={() => onMove?.(category.id, "down")}
+              className="rounded p-1 hover:bg-gray-100"
+              title="Move Down"
+            >
+              <ArrowDown className="h-4 w-4 text-gray-500" />
+            </button>
+          </div>
+        </td>
+
         <td className="px-4 py-2">
           <StatusToggle
             category={category}
             onStatusChange={(newStatus) => {
-              onStatusUpdate?.(category.id, newStatus); // ✅ ส่งขึ้นไปบอก parent
+              onStatusUpdate?.(category.id, newStatus);
             }}
           />
         </td>
@@ -62,7 +85,8 @@ export default function CategoryRow({
             depth={depth + 1}
             expanded={expanded}
             toggleExpand={toggleExpand}
-            onStatusUpdate={onStatusUpdate} // ✅ ส่งต่อไป child ด้วย
+            onStatusUpdate={onStatusUpdate}
+            onMove={onMove} // ✅ ส่งต่อไป child
           />
         ))}
     </>
