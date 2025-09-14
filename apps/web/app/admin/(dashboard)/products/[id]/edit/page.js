@@ -51,7 +51,7 @@ export default function EditProductPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
       alert("Product updated!");
-      router.push("/admin/dashboard/products");
+      router.push("/admin/products");
     } catch (err) {
       alert(err.message);
     }
@@ -162,7 +162,7 @@ export default function EditProductPage() {
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            onClick={() => router.push("/admin/dashboard/products")}
+            onClick={() => router.push("/admin/products")}
             className="rounded border px-4 py-2"
           >
             Cancel
