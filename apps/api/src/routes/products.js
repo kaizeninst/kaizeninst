@@ -5,6 +5,7 @@ import {
   getProductById,
   updateProduct,
   deleteProduct,
+  toggleProductStatus,
 } from "../controllers/product.controller.js";
 import { maybeAuth } from "../middleware/maybeAuth.js";
 
@@ -18,5 +19,6 @@ router.get("/:id", getProductById);
 router.post("/", maybeAuth, createProduct);
 router.put("/:id", maybeAuth, updateProduct);
 router.delete("/:id", maybeAuth, deleteProduct);
+router.patch("/:id/toggle", maybeAuth, toggleProductStatus);
 
 export default router;
