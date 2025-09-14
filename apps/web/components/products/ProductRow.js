@@ -1,6 +1,9 @@
 import { Edit, Trash } from "lucide-react";
 
 export default function ProductRow({ product, onToggleShowPrice, onEdit, onDelete }) {
+  // ✅ Auto check: if stock = 0 → out of stock
+  const isOutOfStock = product.stock_quantity === 0 || product.status !== "active";
+
   return (
     <tr className="border-t hover:bg-gray-50">
       {/* Image */}
@@ -46,14 +49,14 @@ export default function ProductRow({ product, onToggleShowPrice, onEdit, onDelet
       {/* Stock */}
       <td className="px-4 py-2">{product.stock_quantity}</td>
 
-      {/* Status */}
+      {/* ✅ Status */}
       <td className="px-4 py-2">
         <span
           className={`rounded px-3 py-1 text-xs font-semibold ${
-            product.status === "active" ? "bg-black text-white" : "bg-red-500 text-white"
+            isOutOfStock ? "bg-red-500 text-white" : "bg-black text-white"
           }`}
         >
-          {product.status === "active" ? "In Stock" : "Out of Stock"}
+          {isOutOfStock ? "Out of Stock" : "In Stock"}
         </span>
       </td>
 
