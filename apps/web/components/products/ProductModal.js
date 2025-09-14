@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useQuill } from "react-quilljs";
+import "quill/dist/quill.snow.css";
 
 export default function ProductModal({ isOpen, onClose, mode, product, onSuccess }) {
   const [form, setForm] = useState({
@@ -13,6 +15,7 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
     status: "active",
   });
   const [categories, setCategories] = useState([]);
+  const { quill, quillRef } = useQuill();
 
   useEffect(() => {
     if (isOpen) {
@@ -21,6 +24,16 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
         .then((data) => setCategories(data?.data || []));
     }
   }, [isOpen]);
+
+  // ✅ Sync content Quill → state
+  useEffect(() => {
+    if (quill) {
+      quill.root.innerHTML = form.description || "";
+      quill.on("text-change", () => {
+        setForm((prev) => ({ ...prev, description: quill.root.innerHTML }));
+      });
+    }
+  }, [quill]);
 
   useEffect(() => {
     if (mode === "edit" && product) {
@@ -82,24 +95,24 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded bg-white p-6 shadow">
+      <div className="w-full max-w-2xl rounded bg-white p-6 shadow">
         <h2 className="mb-4 text-lg font-semibold">
           {mode === "create" ? "Create Product" : "Edit Product"}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             name="name"
-            placeholder="Name"
             value={form.name}
             onChange={handleChange}
+            placeholder="Name"
             required
             className="w-full rounded border px-3 py-2"
           />
           <input
             name="slug"
-            placeholder="Slug"
             value={form.slug}
             onChange={handleChange}
+            placeholder="Slug"
             required
             className="w-full rounded border px-3 py-2"
           />
@@ -131,13 +144,13 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
             onChange={handleChange}
             className="w-full rounded border px-3 py-2"
           />
-          <textarea
-            name="description"
-            placeholder="Description"
-            value={form.description}
-            onChange={handleChange}
-            className="w-full rounded border px-3 py-2"
-          />
+
+          {/* ✅ Rich Text Editor */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Description</label>
+            <div ref={quillRef} className="h-40 rounded border" />
+          </div>
+
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -147,6 +160,7 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
             />{" "}
             Hide Price
           </label>
+
           <select
             name="status"
             value={form.status}
@@ -156,6 +170,7 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
+
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded border px-4 py-2">
               Cancel
