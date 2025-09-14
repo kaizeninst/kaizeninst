@@ -95,55 +95,79 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-2xl rounded bg-white p-6 shadow">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded bg-white p-6 shadow">
         <h2 className="mb-4 text-lg font-semibold">
           {mode === "create" ? "Create Product" : "Edit Product"}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="Name"
-            required
-            className="w-full rounded border px-3 py-2"
-          />
-          <input
-            name="slug"
-            value={form.slug}
-            onChange={handleChange}
-            placeholder="Slug"
-            required
-            className="w-full rounded border px-3 py-2"
-          />
-          <input
-            name="price"
-            type="number"
-            step="0.01"
-            value={form.price}
-            onChange={handleChange}
-            className="w-full rounded border px-3 py-2"
-          />
-          <select
-            name="category_id"
-            value={form.category_id}
-            onChange={handleChange}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Select Category</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <input
-            name="stock_quantity"
-            type="number"
-            value={form.stock_quantity}
-            onChange={handleChange}
-            className="w-full rounded border px-3 py-2"
-          />
+          {/* Name */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Name</label>
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              placeholder="Name"
+              required
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+
+          {/* Slug */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Slug</label>
+            <input
+              name="slug"
+              value={form.slug}
+              onChange={handleChange}
+              placeholder="Slug"
+              required
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+
+          {/* Price */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Price (THB)</label>
+            <input
+              name="price"
+              type="number"
+              step="0.01"
+              value={form.price}
+              onChange={handleChange}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Category</label>
+            <select
+              name="category_id"
+              value={form.category_id}
+              onChange={handleChange}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="">Select Category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Stock */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Stock Quantity</label>
+            <input
+              name="stock_quantity"
+              type="number"
+              value={form.stock_quantity}
+              onChange={handleChange}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
 
           {/* ✅ Rich Text Editor */}
           <div>
@@ -151,26 +175,32 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
             <div ref={quillRef} className="h-40 rounded border" />
           </div>
 
-          <label className="flex items-center gap-2">
+          {/* Hide Price */}
+          <div className="flex items-center gap-2">
             <input
               type="checkbox"
               name="hide_price"
               checked={form.hide_price}
               onChange={handleChange}
-            />{" "}
-            Hide Price
-          </label>
+            />
+            <label className="text-sm">Hide Price</label>
+          </div>
 
-          <select
-            name="status"
-            value={form.status}
-            onChange={handleChange}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+          {/* Status */}
+          <div>
+            <label className="mb-1 block text-sm font-medium">Status</label>
+            <select
+              name="status"
+              value={form.status}
+              onChange={handleChange}
+              className="w-full rounded border px-3 py-2"
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
 
+          {/* Buttons */}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded border px-4 py-2">
               Cancel
