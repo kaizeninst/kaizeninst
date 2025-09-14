@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search } from "lucide-react";
-import { ProductRow, ProductModal } from "../../../../components/products";
+import { Plus, Search, Edit, Trash } from "lucide-react";
+import Link from "next/link";
+import { ProductRow } from "../../../../components/products";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -19,10 +20,7 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState("create");
-  const [selectedProduct, setSelectedProduct] = useState(null);
-
+  // ✅ debounce search
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
@@ -100,16 +98,13 @@ export default function ProductsPage() {
             />
           </div>
 
-          <button
-            onClick={() => {
-              setModalMode("create");
-              setSelectedProduct(null);
-              setModalOpen(true);
-            }}
+          {/* ✅ เปลี่ยนจากเปิด Modal → ไปที่หน้า Create */}
+          <Link
+            href="/admin/products/create"
             className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
           >
             <Plus className="h-4 w-4" /> Add Product
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -140,11 +135,8 @@ export default function ProductsPage() {
                     key={p.id}
                     product={p}
                     onToggleShowPrice={handleToggleShowPrice}
-                    onEdit={(prod) => {
-                      setModalMode("edit");
-                      setSelectedProduct(prod);
-                      setModalOpen(true);
-                    }}
+                    // ✅ เปลี่ยนจากเปิด Modal → ไปที่หน้า Edit
+                    onEdit={() => (window.location.href = `/admin/products/${p.id}/edit`)}
                     onDelete={handleDelete}
                   />
                 ))}
@@ -152,7 +144,7 @@ export default function ProductsPage() {
             </table>
           </div>
 
-          {/* Pagination (แดง) */}
+          {/* Pagination */}
           <div className="mt-4 flex items-center justify-between">
             <p className="text-sm text-gray-600">
               Showing {(pagination.page - 1) * pagination.limit + 1}–
@@ -199,15 +191,6 @@ export default function ProductsPage() {
           </div>
         </>
       )}
-
-      {/* Modal */}
-      <ProductModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        mode={modalMode}
-        product={selectedProduct}
-        onSuccess={() => fetchProducts(page, debouncedSearch)}
-      />
     </div>
   );
 }
