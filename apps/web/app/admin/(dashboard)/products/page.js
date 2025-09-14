@@ -19,37 +19,16 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // debounce search
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  const handleStatusUpdate = (id, newStatus) => {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p)));
-  };
-
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
-    try {
-      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (res.ok) {
-        fetchProducts(page, debouncedSearch);
-      } else {
-        alert(data.error || "Failed to delete");
-      }
-    } catch (err) {
-      console.error("Delete error:", err);
-    }
-  };
-
-  async function fetchProducts(p = page, s = debouncedSearch) {
+  const fetchProducts = async (p = page, s = debouncedSearch) => {
     setLoading(true);
     try {
       const res = await fetch(
@@ -64,27 +43,60 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     fetchProducts(1, debouncedSearch);
   }, [debouncedSearch]);
 
+  const handleToggleShowPrice = async (product) => {
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hide_price: !product.hide_price }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === product.id ? { ...p, hide_price: data.hide_price } : p))
+        );
+      }
+    } catch (err) {
+      console.error("Toggle show price error:", err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) fetchProducts(page, debouncedSearch);
+      else alert(data.error || "Failed to delete");
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold">Products</h1>
+        <div>
+          <h1 className="text-2xl font-semibold">Products Management</h1>
+          <p className="text-sm text-gray-500">Manage your store&apos;s products</p>
+        </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search products..."
+              placeholder="Search Products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 sm:w-64"
+              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:border-red-500 focus:ring focus:ring-red-200 sm:w-64"
             />
           </div>
 
@@ -94,7 +106,7 @@ export default function ProductsPage() {
               setSelectedProduct(null);
               setModalOpen(true);
             }}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white shadow hover:bg-blue-700"
+            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
           >
             <Plus className="h-4 w-4" /> Add Product
           </button>
@@ -112,13 +124,14 @@ export default function ProductsPage() {
             <table className="min-w-full rounded-lg border border-gray-200 bg-white shadow-sm">
               <thead className="bg-gray-100 text-sm text-gray-700">
                 <tr>
+                  <th className="px-4 py-2 text-left">Image</th>
                   <th className="px-4 py-2 text-left">Name</th>
-                  <th className="px-4 py-2 text-left">Slug</th>
+                  <th className="px-4 py-2 text-left">Category</th>
                   <th className="px-4 py-2 text-left">Price</th>
+                  <th className="px-4 py-2 text-left">Show Price</th>
                   <th className="px-4 py-2 text-left">Stock</th>
                   <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Category</th>
-                  <th className="px-4 py-2 text-left">Actions</th>
+                  <th className="px-4 py-2 text-left">Action</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
@@ -126,7 +139,7 @@ export default function ProductsPage() {
                   <ProductRow
                     key={p.id}
                     product={p}
-                    onStatusUpdate={handleStatusUpdate}
+                    onToggleShowPrice={handleToggleShowPrice}
                     onEdit={(prod) => {
                       setModalMode("edit");
                       setSelectedProduct(prod);
@@ -139,7 +152,7 @@ export default function ProductsPage() {
             </table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination (แดง) */}
           <div className="mt-4 flex items-center justify-between">
             <p className="text-sm text-gray-600">
               Showing {(pagination.page - 1) * pagination.limit + 1}–
@@ -153,7 +166,7 @@ export default function ProductsPage() {
                 className={`rounded border px-3 py-1 ${
                   pagination.page === 1
                     ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-white hover:bg-gray-50"
+                    : "bg-red-500 text-white hover:bg-red-600"
                 }`}
               >
                 Previous
@@ -164,7 +177,7 @@ export default function ProductsPage() {
                   key={p}
                   onClick={() => fetchProducts(p, debouncedSearch)}
                   className={`rounded border px-3 py-1 ${
-                    page === p ? "bg-blue-600 text-white" : "bg-white hover:bg-gray-50"
+                    page === p ? "bg-red-600 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   {p}
@@ -177,7 +190,7 @@ export default function ProductsPage() {
                 className={`rounded border px-3 py-1 ${
                   pagination.page === pagination.totalPages
                     ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-white hover:bg-gray-50"
+                    : "bg-red-500 text-white hover:bg-red-600"
                 }`}
               >
                 Next

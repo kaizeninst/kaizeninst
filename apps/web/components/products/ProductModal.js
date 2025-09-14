@@ -160,7 +160,10 @@ export default function ProductModal({ isOpen, onClose, mode, product, onSuccess
             <button type="button" onClick={onClose} className="rounded border px-4 py-2">
               Cancel
             </button>
-            <button type="submit" className="rounded bg-blue-600 px-4 py-2 text-white">
+            <button
+              type="submit"
+              className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+            >
               {mode === "create" ? "Create" : "Save"}
             </button>
           </div>
