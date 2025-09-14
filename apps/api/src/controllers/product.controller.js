@@ -1,24 +1,84 @@
 import models from "../models/index.js";
+import { Op } from "sequelize";
 const { Product, Category } = models;
 
 // ✅ CREATE
 export const createProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const {
+      name,
+      slug,
+      price,
+      category_id,
+      hide_price = false,
+      stock_quantity = 0,
+      description,
+      image_path,
+      manual_file_path,
+      status = "active",
+    } = req.body;
+
+    if (!name || !slug || !price || !category_id) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const product = await Product.create({
+      name,
+      slug,
+      price,
+      category_id,
+      hide_price,
+      stock_quantity,
+      description,
+      image_path,
+      manual_file_path,
+      status,
+    });
+
     res.status(201).json(product);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 };
 
-// ✅ READ ALL
-export const getAllProducts = async (_req, res) => {
+// ✅ READ ALL (with filters + pagination)
+export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.findAll({
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const { status, search, category_id } = req.query;
+
+    const where = {};
+    if (status) where.status = status;
+    if (category_id) where.category_id = category_id;
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { slug: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    const { count, rows } = await Product.findAndCountAll({
+      where,
+      offset,
+      limit,
+      order: [["created_at", "DESC"]],
       include: [{ model: Category, attributes: ["id", "name", "slug"] }],
     });
-    res.json(products);
+
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+      },
+    });
   } catch (err) {
+    console.error("GET /products error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -58,6 +118,26 @@ export const deleteProduct = async (req, res) => {
     await product.destroy();
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ TOGGLE STATUS
+export const toggleProductStatus = async (req, res) => {
+  try {
+    const product = await Product.findByPk(req.params.id);
+    if (!product) return res.status(404).json({ error: "Product not found" });
+
+    product.status = product.status === "active" ? "inactive" : "active";
+    await product.save();
+
+    res.json({
+      message: "Product status updated",
+      id: product.id,
+      status: product.status,
+    });
+  } catch (err) {
+    console.error("PATCH /products/:id/toggle error:", err);
     res.status(500).json({ error: err.message });
   }
 };
