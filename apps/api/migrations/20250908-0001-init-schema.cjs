@@ -236,7 +236,7 @@ module.exports = {
       {
         id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true, allowNull: false },
         name: { type: Sequelize.STRING(255), allowNull: false },
-        email: { type: Sequelize.STRING(255), allowNull: false, unique: true },
+        username: { type: Sequelize.STRING(255), allowNull: false, unique: true },
         password_hash: { type: Sequelize.STRING(255), allowNull: true },
         role: {
           type: Sequelize.ENUM(...staffRole),
