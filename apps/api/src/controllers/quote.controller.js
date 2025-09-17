@@ -1,4 +1,5 @@
 import models from "../models/index.js";
+import { Op } from "sequelize";
 const { Quote, QuoteItem, Product } = models;
 
 // ✅ CREATE
@@ -11,14 +12,44 @@ export const createQuote = async (req, res) => {
   }
 };
 
-// ✅ READ ALL
-export const getAllQuotes = async (_req, res) => {
+// ✅ READ ALL (with filters + pagination)
+export const getAllQuotes = async (req, res) => {
   try {
-    const quotes = await Quote.findAll({
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const { status, search } = req.query;
+
+    const where = {};
+    if (status) where.status = status;
+    if (search) {
+      where[Op.or] = [
+        { customer_name: { [Op.like]: `%${search}%` } },
+        { customer_email: { [Op.like]: `%${search}%` } },
+        { company_name: { [Op.like]: `%${search}%` } },
+        { notes: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    const { count, rows } = await Quote.findAndCountAll({
+      where,
+      offset,
+      limit,
+      order: [["created_at", "DESC"]],
       include: [{ model: QuoteItem, include: [Product] }],
     });
-    res.json(quotes);
+
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+      },
+    });
   } catch (err) {
+    console.error("GET /quotes error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -57,6 +88,28 @@ export const deleteQuote = async (req, res) => {
 
     await quote.destroy();
     res.json({ message: "Quote deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ UPDATE STATUS
+export const updateQuoteStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ["draft", "sent", "accepted", "rejected", "expired"];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
+    }
+
+    const quote = await Quote.findByPk(req.params.id);
+    if (!quote) return res.status(404).json({ error: "Quote not found" });
+
+    await quote.update({ status });
+    res.json({ message: "Status updated successfully", quote });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
