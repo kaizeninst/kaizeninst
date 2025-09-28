@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FileText, FileEdit, Send, CheckCircle, XCircle, Clock, Eye, Plus } from "lucide-react";
 
 export default function QuoteManagementPage() {
+  const router = useRouter();
   const [quotes, setQuotes] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,8 +58,11 @@ export default function QuoteManagementPage() {
           <h1 className="text-2xl font-bold">Quote Management</h1>
           <p className="text-sm text-gray-500">Manage and track customer quotes</p>
         </div>
-        <button className="flex items-center gap-2 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700">
-          <Plus size={16} /> Add Order
+        <button
+          onClick={() => router.push("/admin/quotes/create")}
+          className="flex items-center gap-2 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+        >
+          <Plus size={16} /> Add Quote
         </button>
       </div>
 
