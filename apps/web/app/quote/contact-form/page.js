@@ -52,7 +52,9 @@ export default function RequestQuotePage() {
       <main className="container mx-auto flex-grow px-4 py-8">
         <div className="space-y-8">
           <div className="flex flex-col items-center justify-center">
-            <MessageSquare className="mb-4 h-12 w-12 text-red-600" />
+            <div className="h-18 w-18 mx-auto mb-4 flex items-center justify-center rounded-md bg-red-100">
+              <MessageSquare className="h-10 w-10 text-red-600" />
+            </div>
             <h1 className="pb-2.5 text-4xl font-bold">Request a Quote</h1>
             <p className="text-gray-600">
               Review your items and tell us about your requirements for a custom quote.
@@ -86,9 +88,9 @@ export default function RequestQuotePage() {
                   <span>Estimated Tax</span>
                   <span>${tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-xl font-bold text-red-600">
+                <div className="flex justify-between text-xl font-bold text-black">
                   <span>Estimated Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span className="text-[#A90000]">THB {total.toFixed(2)}</span>
                 </div>
               </div>
               <div className="rounded-md bg-blue-100 p-4 text-sm">
@@ -175,7 +177,7 @@ export default function RequestQuotePage() {
                   </Link>
                   <button
                     type="submit"
-                    className="rounded-lg bg-red-600 px-6 py-3 text-white shadow transition-colors hover:bg-red-700"
+                    className="rounded-lg bg-red-600 px-6 py-3 text-white shadow transition-colors hover:bg-[#a90000]"
                   >
                     <Link href="/quote/success" className="hover:underline">
                       Send Quote Request

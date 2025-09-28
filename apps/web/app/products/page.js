@@ -3,12 +3,65 @@ import Image from "next/image";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-
-// Dummy product data with new brand and category properties
 import { products } from "../../data/productsdata";
 
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+  const [inputPage, setInputPage] = useState(currentPage.toString());
+
+  useEffect(() => {
+    setInputPage(currentPage.toString());
+  }, [currentPage]);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setInputPage(value);
+    if (value === "") {
+      return;
+    }
+    const pageNumber = Number(value);
+    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
+      onPageChange(pageNumber);
+    }
+  };
+
+  return (
+    <div className="mt-8 flex items-center justify-center space-x-2">
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f80000] text-gray-700 transition-colors hover:bg-[#A80000] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <ChevronLeft className="h-5 w-5" color="white" />
+      </button>
+
+      {/* Page number */}
+      <span className="flex items-center text-sm font-semibold text-gray-700">
+        <input
+          type="number"
+          value={inputPage}
+          onChange={handleInputChange}
+          className="w-12 rounded-lg border px-1 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+          min="1"
+          max={totalPages}
+        />
+        <span className="ml-1">of {totalPages}</span>
+      </span>
+
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f80000] text-gray-700 transition-colors hover:bg-[#A80000] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <ChevronRight className="h-5 w-5" color="white" />
+      </button>
+    </div>
+  );
+};
+
+// Filters
 function Filters({
   selectedCategory,
   setSelectedCategory,
@@ -126,8 +179,9 @@ export default function ProductsPage() {
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 8;
 
-  // Calculate unique brands and categories on initial load
   useEffect(() => {
     const allBrands = ["All", ...new Set(products.map((p) => p.brand))];
     setBrands(allBrands);
@@ -156,41 +210,26 @@ export default function ProductsPage() {
       return 0;
     });
 
+  // Pagination logic
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+  const currentProducts = filteredAndSortedProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+  const totalPages = Math.ceil(filteredAndSortedProducts.length / productsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedBrand, selectedCategory, minPrice, maxPrice, inStockOnly, sortBy]);
+
   return (
     <div>
       <Navbar />
       <div className="p-8 md:p-12 lg:p-16">
         <div className="space-y-8">
-          {/* Header + Search */}
-          <div className="flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
-            <h1 className="text-4xl font-bold">Products</h1>
-            <div className="relative w-full md:w-1/3">
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-lg border py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
           <div className="flex flex-col space-y-6 md:flex-row md:space-x-8 md:space-y-0">
             {/* Mobile Filter Button */}
             <div className="md:hidden">
@@ -236,6 +275,7 @@ export default function ProductsPage() {
             {/* Desktop sidebar filter */}
             <div className="hidden md:block md:w-1/4">
               <h3 className="mb-4 text-2xl font-semibold">Filters</h3>
+
               <Filters
                 selectedCategory={selectedCategory}
                 setSelectedCategory={setSelectedCategory}
@@ -250,11 +290,7 @@ export default function ProductsPage() {
                 brands={brands}
                 categories={categories}
               />
-            </div>
-
-            {/* Product Grid */}
-            <div className="w-full md:w-3/4">
-              <div className="mb-4 flex justify-end">
+              <div className="mt-4 flex justify-start">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
@@ -266,10 +302,40 @@ export default function ProductsPage() {
                   <option value="price-desc">Price (High to Low)</option>
                 </select>
               </div>
+            </div>
 
+            {/* Product Grid */}
+            <div className="w-full md:w-3/4">
+              <div className="mb-4 flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
+                <div className="relative w-full md:w-full">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full rounded-lg border py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredAndSortedProducts.length > 0 ? (
-                  filteredAndSortedProducts.map((product) => (
+                {currentProducts.length > 0 ? (
+                  currentProducts.map((product) => (
                     <Link href={`/products/${product.id}`} key={product.id} className="group block">
                       <div className="group block overflow-hidden rounded-lg bg-white shadow-md transition-shadow hover:shadow-xl">
                         <div>
@@ -284,14 +350,7 @@ export default function ProductsPage() {
                         </div>
                         <div className="p-4">
                           <h3 className="text-lg font-semibold">{product.name}</h3>
-                          <p className="font-medium text-gray-600">${product.price}</p>
-                          <p className="text-sm text-gray-500">Brand: {product.brand}</p>
-                          <p
-                            className="mt-1 text-sm"
-                            style={{ color: product.inStock ? "green" : "red" }}
-                          >
-                            {product.inStock ? "In Stock" : "Out of Stock"}
-                          </p>
+                          <p className="font-medium text-[#A80000]">฿{product.price}</p>
                         </div>
                       </div>
                     </Link>
@@ -302,6 +361,13 @@ export default function ProductsPage() {
                   </p>
                 )}
               </div>
+              {filteredAndSortedProducts.length > productsPerPage && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )}
             </div>
           </div>
         </div>
