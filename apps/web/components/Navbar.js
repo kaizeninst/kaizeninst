@@ -1,21 +1,26 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ShoppingCart, Menu, X } from "lucide-react";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
-  // Function to toggle the mobile menu state
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
+  useEffect(() => {
+    const updateCartCount = () => {
+      const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
+      const count = storedCart.reduce((acc, item) => acc + item.quantity, 0);
+      setCartCount(count);
+    };
 
-  // Function to close the mobile menu after clicking a link
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
-  };
+    updateCartCount();
+
+    window.addEventListener("storage", updateCartCount);
+    return () => {
+      window.removeEventListener("storage", updateCartCount);
+    };
+  }, []);
 
   return (
     <nav className="w-full border-b-2 border-red-500 bg-white shadow-md">
@@ -23,73 +28,91 @@ export default function Navbar() {
         <div className="flex-shrink-0">
           <Link
             href="/"
-            className="rounded-md bg-red-600 px-4 py-2 font-bold text-white shadow-lg transition-all duration-300 hover:bg-red-700 md:px-6 md:py-2"
+            className="rounded-md bg-red-600 px-4 py-2 font-bold text-white shadow-lg transition-all duration-300 md:px-6 md:py-2"
           >
-            LOGO
+            LOGOs
           </Link>
         </div>
 
-        {/* Navigation Links - Hidden on mobile, visible on desktop */}
         <div className="hidden flex-grow justify-center space-x-4 md:flex md:space-x-8">
-          <Link href="/" className="nav-link">
+          <Link href="/" className="nav-link hover:text-[#A90000]">
             HOME
           </Link>
-          <Link href="/products" className="nav-link">
+          <Link href="/products" className="nav-link hover:text-[#A90000]">
             PRODUCT
           </Link>
-          <Link href="/about-us" className="nav-link">
+          <Link href="/about-us" className="nav-link hover:text-[#A90000]">
             ABOUT US
           </Link>
-          <Link href="/contact" className="nav-link">
+          <Link href="/contact" className="nav-link hover:text-[#A90000]">
             CONTACT
           </Link>
         </div>
 
-        {/* Hamburger Menu & Cart Icon */}
         <div className="flex items-center space-x-4">
-          <Link
-            href="/cart"
-            className="text-lg font-medium text-black transition-colors duration-300 hover:text-red-400"
-          >
-            <ShoppingCart className="h-7 w-7 cursor-pointer text-black transition-colors duration-300 hover:text-red-400" />
+          <Link href="/cart" className="relative">
+            <ShoppingCart className="h-7 w-7 cursor-pointer text-black hover:text-red-400" />
+            {cartCount > 0 && (
+              <span className="absolute -right-2 -top-2 rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                {cartCount}
+              </span>
+            )}
           </Link>
           <button
-            onClick={toggleMobileMenu}
-            className="rounded-md p-2 text-black transition-colors duration-300 hover:text-red-400 md:hidden"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="rounded-md p-2 text-black hover:text-red-400 md:hidden"
           >
             {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu Overlay*/}
+      {/* Mobile Menu */}
       <div
-        className={`fixed inset-0 z-50 transform transition-opacity duration-300 md:hidden ${isMobileMenuOpen ? "pointer-events-auto bg-black/50 opacity-100" : "pointer-events-none opacity-0"}`}
-        onClick={closeMobileMenu}
+        className={`fixed inset-0 z-50 transform transition-opacity duration-300 md:hidden ${
+          isMobileMenuOpen
+            ? "pointer-events-auto bg-black/50 opacity-100"
+            : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setIsMobileMenuOpen(false)}
       >
         <div
-          className={`fixed inset-y-0 right-0 w-3/4 max-w-sm transform border-l-2 border-red-500 bg-white p-6 shadow-lg transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}
-          onClick={(e) => e.stopPropagation()} // This prevents closing the menu when clicking inside it
+          className={`fixed inset-y-0 right-0 w-3/4 max-w-sm transform border-l-2 border-red-500 bg-white p-6 shadow-lg transition-transform duration-300 ease-in-out ${
+            isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-end">
             <button
-              onClick={closeMobileMenu}
-              className="text-black transition-colors duration-300 hover:text-red-400"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-black hover:text-red-400"
             >
               <X size={28} />
             </button>
           </div>
           <div className="flex flex-col items-end space-y-6 pt-10">
-            <Link href="/" onClick={closeMobileMenu} className="mobile-link">
+            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="mobile-link">
               HOME
             </Link>
-            <Link href="/products" onClick={closeMobileMenu} className="mobile-link">
+            <Link
+              href="/products"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="mobile-link"
+            >
               PRODUCT
             </Link>
-            <Link href="/about-us" onClick={closeMobileMenu} className="mobile-link">
+            <Link
+              href="/about-us"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="mobile-link"
+            >
               ABOUT US
             </Link>
-            <Link href="/contact" onClick={closeMobileMenu} className="mobile-link">
+            <Link
+              href="/contact"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="mobile-link"
+            >
               CONTACT
             </Link>
           </div>

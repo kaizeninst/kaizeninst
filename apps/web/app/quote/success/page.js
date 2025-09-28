@@ -3,27 +3,18 @@
 import Link from "next/link";
 import Navbar from "../../../components/Navbar";
 import Footer from "../../../components/Footer";
-import { Phone, Mail, Clock } from "lucide-react";
+import { Phone, Mail, Clock, Check } from "lucide-react";
 
 export default function SuccessPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="container mx-auto flex-grow px-4 py-8">
-        <div className="mx-auto max-w-2xl space-y-8 py-8">
+        <div className="mx-auto max-w-3xl space-y-8 py-8">
           {/* Checkmark */}
           <div className="flex justify-center">
-            <div className="inline-block rounded-full bg-green-100 p-4 text-green-700">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-12 w-12"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+            <div className="h-30 w-30 mx-auto mb-4 flex items-center justify-center rounded-full bg-green-500">
+              <Check color="white" className="h-20 w-20" />
             </div>
           </div>
 
@@ -36,18 +27,26 @@ export default function SuccessPage() {
           </p>
 
           {/* Reference card */}
-          <div className="space-y-2 rounded-lg bg-gray-50 p-6 text-center shadow-md">
-            <div className="text-sm font-medium text-gray-500">Reference Number</div>
-            <div className="text-2xl font-bold text-gray-800">QR-123AGV25</div>
-            <p className="text-sm italic text-gray-500">
-              Please save this reference number for your records.
-            </p>
+          <div className="rounded-lg bg-white pt-4 shadow-md">
+            <div className="text-center font-semibold">
+              <h1 className="text-2xl">Reference Number</h1>
+            </div>
+            <div className="px-6 py-4 text-center">
+              <div className="inline-block w-full border bg-[#F9FAFC] px-4 py-2 text-2xl font-bold">
+                <h1 className="text-[#FF0000]">QR-123AGV25</h1>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Please save this reference number for your records.
+              </p>
+            </div>
           </div>
 
-          {/* Steps */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold sm:text-2xl">What happens next?</h2>
-            <div className="space-y-6">
+          {/* Steps card */}
+          <div className="rounded-lg bg-white pt-4 shadow-md">
+            <div className="text-center text-2xl font-semibold">
+              <h1 className="">What happens next?</h1>
+            </div>
+            <div className="space-y-6 p-6">
               {[
                 {
                   step: 1,
@@ -57,17 +56,17 @@ export default function SuccessPage() {
                 {
                   step: 2,
                   title: "Custom Quote Preparation",
-                  desc: "We'll prepare a detailed quote tailored to your specific needs.",
+                  desc: "We’ll prepare a detailed quote tailored to your specific needs.",
                 },
                 {
                   step: 3,
                   title: "Response & Follow-up",
-                  desc: "You'll receive our quote via email within 24 hours.",
+                  desc: "You’ll receive our quote via email within 24 hours.",
                 },
               ].map((s) => (
                 <div key={s.step} className="flex items-start gap-4">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 font-bold text-white">
-                    {s.step}
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#FFB8B8] font-bold text-white">
+                    <h1 className="text-[#A80000]">{s.step}</h1>
                   </span>
                   <div>
                     <h3 className="text-lg font-semibold">{s.title}</h3>
@@ -103,7 +102,7 @@ export default function SuccessPage() {
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link
               href="/"
-              className="w-full rounded-lg bg-red-600 px-6 py-3 text-center text-white shadow transition-colors hover:bg-red-700 sm:w-auto"
+              className="w-full rounded-lg bg-[#f80000] px-6 py-3 text-center text-white shadow transition-colors hover:bg-[#A80000] sm:w-auto"
             >
               Return to Home
             </Link>

@@ -3,27 +3,32 @@
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import Image from "next/image";
+import { Goal, Heart, UsersRound, Award } from "lucide-react";
 
 const companyValues = [
   {
     title: "Quality First",
     description:
       "We carefully select every product to ensure it meets our high standards for quality and durability.",
+    icon: Goal,
   },
   {
     title: "Customer Care",
     description:
       "Your satisfaction is our priority. We're here to help with any questions or concerns you may have.",
+    icon: Heart,
   },
   {
     title: "Excellence",
     description:
       "We strive for excellence in every aspect of our business, from product selection to customer service.",
+    icon: Award,
   },
   {
     title: "Community",
     description:
       "We believe in building strong relationships with our customers and giving back to our community.",
+    icon: UsersRound,
   },
 ];
 
@@ -51,14 +56,13 @@ export default function AboutUsPage() {
       <Navbar />
       <div className="flex flex-grow flex-col">
         {/* Hero Banner Section */}
-        <section className="w-full px-4 py-12 sm:px-8 md:px-16 md:py-20">
-          <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-lg shadow-xl">
+        <section className="w-full">
+          <div className="relative h-screen w-full">
             <Image
               alt="Hero Banner"
               src="https://placehold.co/1200x400/808080/FFFFFF?text=Company+Components"
-              width={1200}
-              height={400}
-              className="h-auto w-full object-cover"
+              fill
+              className="object-cover object-center"
               unoptimized
             />
           </div>
@@ -111,6 +115,9 @@ export default function AboutUsPage() {
                   key={index}
                   className="rounded-lg bg-white p-6 text-center shadow-md transition-transform duration-300 hover:scale-105"
                 >
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-md bg-red-100">
+                    <value.icon className="h-8 w-8 text-red-500" />
+                  </div>
                   <h3 className="mb-2 text-lg font-semibold sm:text-xl">{value.title}</h3>
                   <p className="text-gray-600">{value.description}</p>
                 </div>
@@ -141,7 +148,7 @@ export default function AboutUsPage() {
                     unoptimized
                   />
                   <h3 className="text-lg font-semibold sm:text-xl">{member.name}</h3>
-                  <p className="text-gray-600">{member.title}</p>
+                  <p className="text-[#A90000]">{member.title}</p>
                 </div>
               ))}
             </div>
