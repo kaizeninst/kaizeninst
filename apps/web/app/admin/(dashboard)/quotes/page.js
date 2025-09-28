@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { FileText, FileEdit, Send, CheckCircle, XCircle, Clock, Eye, Plus } from "lucide-react";
 
 export default function QuoteManagementPage() {
   const [quotes, setQuotes] = useState([]);
-  const [summary, setSummary] = useState(null); // 🆕 state สำหรับ summary
+  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -21,7 +22,6 @@ export default function QuoteManagementPage() {
     }
   }
 
-  // 🆕 ดึง summary
   async function fetchSummary() {
     try {
       const res = await fetch(`/api/quotes/summary`, { credentials: "include" });
@@ -40,7 +40,7 @@ export default function QuoteManagementPage() {
       body: JSON.stringify({ status: newStatus }),
     });
     fetchQuotes();
-    fetchSummary(); // 🆕 refresh summary หลังเปลี่ยน status
+    fetchSummary();
   }
 
   useEffect(() => {
@@ -105,23 +105,6 @@ export default function QuoteManagementPage() {
         <p className="mb-6 text-sm text-gray-500">Loading summary...</p>
       )}
 
-      {/* Search + filter */}
-      <div className="mb-4 flex items-center gap-3">
-        <input
-          type="text"
-          placeholder="Search orders, customers, or emails..."
-          className="w-full rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-80"
-        />
-        <select className="rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option>All Status</option>
-          <option>Draft</option>
-          <option>Sent</option>
-          <option>Accepted</option>
-          <option>Rejected</option>
-          <option>Expired</option>
-        </select>
-      </div>
-
       {/* Table */}
       <div className="overflow-x-auto rounded-lg bg-white shadow">
         <table className="w-full border-collapse text-left text-sm">
@@ -159,7 +142,7 @@ export default function QuoteManagementPage() {
             ) : (
               quotes.map((q) => (
                 <tr key={q.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">ORD-{q.id}</td>
+                  <td className="p-3">QT-{q.id}</td>
                   <td className="p-3">
                     <div className="font-medium">{q.customer_name}</div>
                     <div className="text-xs text-gray-500">{q.customer_email}</div>
@@ -181,9 +164,13 @@ export default function QuoteManagementPage() {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center justify-end gap-2">
-                      <button className="flex items-center gap-1 rounded bg-gray-100 px-3 py-1 text-xs hover:bg-gray-200">
+                      {/* 🆕 กดแล้วไปหน้า detail */}
+                      <Link
+                        href={`/admin/quotes/${q.id}`}
+                        className="flex items-center gap-1 rounded bg-gray-100 px-3 py-1 text-xs hover:bg-gray-200"
+                      >
                         <Eye size={14} /> View
-                      </button>
+                      </Link>
                       {q.status === "accepted" && (
                         <button className="rounded bg-green-500 px-3 py-1 text-xs text-white hover:bg-green-600">
                           Convert to Order
@@ -201,7 +188,7 @@ export default function QuoteManagementPage() {
   );
 }
 
-/* ✅ Summary Card */
+/* Summary Card */
 function SummaryCard({ icon, label, value, color }) {
   const styles = {
     blue: "bg-blue-100 text-blue-600",
@@ -210,7 +197,6 @@ function SummaryCard({ icon, label, value, color }) {
     red: "bg-red-100 text-red-600",
     yellow: "bg-yellow-100 text-yellow-600",
   };
-
   return (
     <div className="flex items-center justify-between rounded-lg border bg-white p-4 shadow-sm">
       <div className={`flex h-12 w-12 items-center justify-center rounded ${styles[color]}`}>
@@ -224,7 +210,7 @@ function SummaryCard({ icon, label, value, color }) {
   );
 }
 
-/* ✅ Status Badge */
+/* Status Badge */
 function StatusBadge({ value, onChange }) {
   const colors = {
     draft: "bg-gray-100 text-gray-700",
