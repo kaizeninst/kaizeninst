@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
 export default function QuoteDetailPage() {
   const params = useParams();
@@ -45,9 +46,14 @@ export default function QuoteDetailPage() {
           <button className="rounded bg-gray-200 px-4 py-2 text-sm hover:bg-gray-300">
             Send Quote
           </button>
-          <button className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700">
+
+          {/* 🆕 ปรับ Edit ให้ไปหน้า /edit */}
+          <Link
+            href={`/admin/quotes/${quote.id}/edit`}
+            className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+          >
             Edit Quote
-          </button>
+          </Link>
         </div>
       </div>
 

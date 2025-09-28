@@ -5,8 +5,33 @@ const { Quote, QuoteItem, Product } = models;
 // ✅ CREATE
 export const createQuote = async (req, res) => {
   try {
-    const quote = await Quote.create(req.body, { include: [QuoteItem] });
-    res.status(201).json(quote);
+    const { QuoteItems, ...quoteData } = req.body;
+
+    const quote = await Quote.create(quoteData);
+
+    if (QuoteItems && Array.isArray(QuoteItems)) {
+      for (const item of QuoteItems) {
+        const product = await Product.findByPk(item.product_id);
+        if (!product) continue;
+
+        const unitPrice = product.hide_price ? 0 : parseFloat(product.price);
+        const lineTotal = (item.quantity || 1) * unitPrice;
+
+        await QuoteItem.create({
+          quote_id: quote.id,
+          product_id: product.id,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          line_total: lineTotal,
+        });
+      }
+    }
+
+    const newQuote = await Quote.findByPk(quote.id, {
+      include: [{ model: QuoteItem, include: [Product] }],
+    });
+
+    res.status(201).json(newQuote);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -70,11 +95,43 @@ export const getQuoteById = async (req, res) => {
 // ✅ UPDATE
 export const updateQuote = async (req, res) => {
   try {
-    const quote = await Quote.findByPk(req.params.id);
+    const { QuoteItems, ...quoteData } = req.body;
+
+    const quote = await Quote.findByPk(req.params.id, {
+      include: [QuoteItem],
+    });
     if (!quote) return res.status(404).json({ error: "Quote not found" });
 
-    await quote.update(req.body);
-    res.json(quote);
+    // อัปเดต fields ของ Quote
+    await quote.update(quoteData);
+
+    if (QuoteItems && Array.isArray(QuoteItems)) {
+      // ลบ items เก่าทิ้งก่อน
+      await QuoteItem.destroy({ where: { quote_id: quote.id } });
+
+      // เพิ่มใหม่ทั้งหมด
+      for (const item of QuoteItems) {
+        const product = await Product.findByPk(item.product_id);
+        if (!product) continue;
+
+        const unitPrice = product.hide_price ? 0 : parseFloat(product.price);
+        const lineTotal = (item.quantity || 1) * unitPrice;
+
+        await QuoteItem.create({
+          quote_id: quote.id,
+          product_id: product.id,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          line_total: lineTotal,
+        });
+      }
+    }
+
+    const updated = await Quote.findByPk(req.params.id, {
+      include: [{ model: QuoteItem, include: [Product] }],
+    });
+
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -120,7 +177,6 @@ export const getQuoteSummary = async (req, res) => {
   try {
     const statuses = ["draft", "sent", "accepted", "rejected", "expired"];
 
-    // ใช้ Promise.all เพื่อ query นับทีเดียว
     const counts = await Promise.all(statuses.map((s) => Quote.count({ where: { status: s } })));
 
     const total = await Quote.count();
@@ -147,10 +203,11 @@ export const convertQuoteToOrder = async (req, res) => {
     if (!quote) return res.status(404).json({ error: "Quote not found" });
 
     if (quote.status !== "accepted") {
-      return res.status(400).json({ error: "Quote must be accepted before converting to order" });
+      return res.status(400).json({
+        error: "Quote must be accepted before converting to order",
+      });
     }
 
-    // สร้าง Order
     const order = await models.Order.create(
       {
         customer_name: quote.customer_name,
@@ -165,8 +222,7 @@ export const convertQuoteToOrder = async (req, res) => {
       { include: [models.OrderItem] }
     );
 
-    // อัปเดต status quote
-    await quote.update({ status: "converted" }).catch(() => {}); // เพิ่ม status ใหม่ถ้าต้องการ
+    await quote.update({ status: "converted" }).catch(() => {});
 
     res.json({ message: "Quote converted to order", order });
   } catch (err) {
