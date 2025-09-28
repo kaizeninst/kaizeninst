@@ -114,3 +114,62 @@ export const updateQuoteStatus = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ✅ SUMMARY
+export const getQuoteSummary = async (req, res) => {
+  try {
+    const statuses = ["draft", "sent", "accepted", "rejected", "expired"];
+
+    // ใช้ Promise.all เพื่อ query นับทีเดียว
+    const counts = await Promise.all(statuses.map((s) => Quote.count({ where: { status: s } })));
+
+    const total = await Quote.count();
+
+    res.json({
+      total,
+      draft: counts[0],
+      sent: counts[1],
+      accepted: counts[2],
+      rejected: counts[3],
+      expired: counts[4],
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ CONVERT TO ORDER
+export const convertQuoteToOrder = async (req, res) => {
+  try {
+    const quote = await Quote.findByPk(req.params.id, {
+      include: [{ model: QuoteItem, include: [Product] }],
+    });
+    if (!quote) return res.status(404).json({ error: "Quote not found" });
+
+    if (quote.status !== "accepted") {
+      return res.status(400).json({ error: "Quote must be accepted before converting to order" });
+    }
+
+    // สร้าง Order
+    const order = await models.Order.create(
+      {
+        customer_name: quote.customer_name,
+        customer_email: quote.customer_email,
+        total: quote.QuoteItems.reduce((sum, item) => sum + parseFloat(item.line_total || 0), 0),
+        order_items: quote.QuoteItems.map((qi) => ({
+          product_id: qi.product_id,
+          quantity: qi.quantity,
+          unit_price: qi.unit_price,
+        })),
+      },
+      { include: [models.OrderItem] }
+    );
+
+    // อัปเดต status quote
+    await quote.update({ status: "converted" }).catch(() => {}); // เพิ่ม status ใหม่ถ้าต้องการ
+
+    res.json({ message: "Quote converted to order", order });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
