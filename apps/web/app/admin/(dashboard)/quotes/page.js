@@ -4,18 +4,9 @@ import { FileText, FileEdit, Send, CheckCircle, XCircle, Clock, Eye, Plus } from
 
 export default function QuoteManagementPage() {
   const [quotes, setQuotes] = useState([]);
+  const [summary, setSummary] = useState(null); // 🆕 state สำหรับ summary
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // mock summary (TODO: connect API)
-  const summary = {
-    total: 25,
-    draft: 5,
-    sent: 15,
-    accepted: 3,
-    rejected: 2,
-    expired: 0,
-  };
 
   async function fetchQuotes() {
     try {
@@ -30,6 +21,17 @@ export default function QuoteManagementPage() {
     }
   }
 
+  // 🆕 ดึง summary
+  async function fetchSummary() {
+    try {
+      const res = await fetch(`/api/quotes/summary`, { credentials: "include" });
+      const data = await res.json();
+      setSummary(data);
+    } catch (err) {
+      console.error("Failed to load summary:", err);
+    }
+  }
+
   async function updateStatus(id, newStatus) {
     await fetch(`/api/quotes/${id}/status`, {
       method: "PATCH",
@@ -38,10 +40,12 @@ export default function QuoteManagementPage() {
       body: JSON.stringify({ status: newStatus }),
     });
     fetchQuotes();
+    fetchSummary(); // 🆕 refresh summary หลังเปลี่ยน status
   }
 
   useEffect(() => {
     fetchQuotes();
+    fetchSummary();
   }, []);
 
   return (
@@ -58,44 +62,48 @@ export default function QuoteManagementPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-6">
-        <SummaryCard
-          icon={<FileText size={20} className="text-blue-600" />}
-          label="Total Quote"
-          value={summary.total}
-          color="blue"
-        />
-        <SummaryCard
-          icon={<FileEdit size={20} className="text-gray-600" />}
-          label="Draft"
-          value={summary.draft}
-          color="gray"
-        />
-        <SummaryCard
-          icon={<Send size={20} className="text-blue-600" />}
-          label="Sent"
-          value={summary.sent}
-          color="blue"
-        />
-        <SummaryCard
-          icon={<CheckCircle size={20} className="text-green-600" />}
-          label="Accept"
-          value={summary.accepted}
-          color="green"
-        />
-        <SummaryCard
-          icon={<XCircle size={20} className="text-red-600" />}
-          label="Reject"
-          value={summary.rejected}
-          color="red"
-        />
-        <SummaryCard
-          icon={<Clock size={20} className="text-yellow-600" />}
-          label="Expired"
-          value={summary.expired}
-          color="yellow"
-        />
-      </div>
+      {summary ? (
+        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-6">
+          <SummaryCard
+            icon={<FileText size={20} className="text-blue-600" />}
+            label="Total Quote"
+            value={summary.total}
+            color="blue"
+          />
+          <SummaryCard
+            icon={<FileEdit size={20} className="text-gray-600" />}
+            label="Draft"
+            value={summary.draft}
+            color="gray"
+          />
+          <SummaryCard
+            icon={<Send size={20} className="text-blue-600" />}
+            label="Sent"
+            value={summary.sent}
+            color="blue"
+          />
+          <SummaryCard
+            icon={<CheckCircle size={20} className="text-green-600" />}
+            label="Accept"
+            value={summary.accepted}
+            color="green"
+          />
+          <SummaryCard
+            icon={<XCircle size={20} className="text-red-600" />}
+            label="Reject"
+            value={summary.rejected}
+            color="red"
+          />
+          <SummaryCard
+            icon={<Clock size={20} className="text-yellow-600" />}
+            label="Expired"
+            value={summary.expired}
+            color="yellow"
+          />
+        </div>
+      ) : (
+        <p className="mb-6 text-sm text-gray-500">Loading summary...</p>
+      )}
 
       {/* Search + filter */}
       <div className="mb-4 flex items-center gap-3">
@@ -193,7 +201,7 @@ export default function QuoteManagementPage() {
   );
 }
 
-/* ✅ Summary Card (แบบ Design) */
+/* ✅ Summary Card */
 function SummaryCard({ icon, label, value, color }) {
   const styles = {
     blue: "bg-blue-100 text-blue-600",
@@ -205,11 +213,9 @@ function SummaryCard({ icon, label, value, color }) {
 
   return (
     <div className="flex items-center justify-between rounded-lg border bg-white p-4 shadow-sm">
-      {/* Icon Box */}
       <div className={`flex h-12 w-12 items-center justify-center rounded ${styles[color]}`}>
         {icon}
       </div>
-      {/* Text */}
       <div className="text-right">
         <div className="text-sm text-gray-600">{label}</div>
         <div className="text-xl font-bold text-black">{value}</div>
@@ -218,7 +224,7 @@ function SummaryCard({ icon, label, value, color }) {
   );
 }
 
-/* ✅ Status Badge with dropdown */
+/* ✅ Status Badge */
 function StatusBadge({ value, onChange }) {
   const colors = {
     draft: "bg-gray-100 text-gray-700",
