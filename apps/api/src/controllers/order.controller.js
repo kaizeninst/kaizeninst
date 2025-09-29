@@ -61,3 +61,24 @@ export const deleteOrder = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ✅ GET SUMMARY
+export const getOrderSummary = async (_req, res) => {
+  try {
+    const total = await Order.count();
+    const pending = await Order.count({ where: { order_status: "pending" } });
+    const processing = await Order.count({ where: { order_status: "processing" } });
+    const shipped = await Order.count({ where: { order_status: "shipped" } });
+    const delivered = await Order.count({ where: { order_status: "delivered" } });
+
+    res.json({
+      total,
+      pending,
+      processing,
+      shipped,
+      delivered,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

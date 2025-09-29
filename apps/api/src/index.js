@@ -46,7 +46,7 @@ app.get("/health", async (_req, res) => {
 app.use("/api/auth", authRoute);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
-// app.use("/api/orders", orderRoutes);
+app.use("/api/orders", orderRoutes);
 app.use("/api/quotes", quoteRoutes);
 // app.use("/api/staff", staffRoutes);
 
