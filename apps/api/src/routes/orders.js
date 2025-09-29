@@ -6,6 +6,8 @@ import {
   updateOrder,
   deleteOrder,
   getOrderSummary,
+  updateOrderStatus,
+  updatePaymentStatus,
 } from "../controllers/order.controller.js";
 import { maybeAuth } from "../middleware/maybeAuth.js";
 
@@ -20,5 +22,7 @@ router.get("/summary", maybeAuth, getOrderSummary);
 router.get("/:id", maybeAuth, getOrderById);
 router.put("/:id", maybeAuth, updateOrder);
 router.delete("/:id", maybeAuth, deleteOrder);
+router.patch("/:id/status", maybeAuth, updateOrderStatus);
+router.patch("/:id/payment", maybeAuth, updatePaymentStatus);
 
 export default router;

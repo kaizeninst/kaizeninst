@@ -160,3 +160,25 @@ export const getOrderSummary = async (_req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ✅ UPDATE PAYMENT STATUS
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { payment_status } = req.body;
+    const validStatuses = ["paid", "unpaid"];
+
+    if (!validStatuses.includes(payment_status)) {
+      return res.status(400).json({
+        error: `Invalid payment_status. Must be one of: ${validStatuses.join(", ")}`,
+      });
+    }
+
+    const order = await Order.findByPk(req.params.id);
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    await order.update({ payment_status });
+    res.json({ message: "Payment status updated successfully", order });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
