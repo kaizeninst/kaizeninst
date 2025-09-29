@@ -26,9 +26,7 @@ export default function OrderManagementPage() {
 
   async function fetchSummary() {
     try {
-      const res = await fetch(`/api/orders/summary`, {
-        credentials: "include",
-      });
+      const res = await fetch(`/api/orders/summary`, { credentials: "include" });
       const data = await res.json();
       setSummary(data);
     } catch (err) {

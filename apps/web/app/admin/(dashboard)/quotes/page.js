@@ -50,6 +50,23 @@ export default function QuoteManagementPage() {
     fetchSummary();
   }, []);
 
+  async function convertToOrder(id) {
+    try {
+      const res = await fetch(`/api/quotes/${id}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Convert failed");
+      const data = await res.json();
+      alert("✅ Quote converted to order successfully!");
+      fetchQuotes();
+      fetchSummary();
+    } catch (err) {
+      alert("❌ " + err.message);
+    }
+  }
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -177,7 +194,10 @@ export default function QuoteManagementPage() {
                         <Eye size={14} /> View
                       </Link>
                       {q.status === "accepted" && (
-                        <button className="rounded bg-green-500 px-3 py-1 text-xs text-white hover:bg-green-600">
+                        <button
+                          onClick={() => convertToOrder(q.id)}
+                          className="rounded bg-green-500 px-3 py-1 text-xs text-white hover:bg-green-600"
+                        >
                           Convert to Order
                         </button>
                       )}
