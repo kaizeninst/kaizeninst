@@ -7,26 +7,39 @@ export const createOrder = async (req, res) => {
   try {
     const { OrderItems, ...orderData } = req.body;
 
-    const order = await Order.create(orderData);
-
-    if (OrderItems && Array.isArray(OrderItems)) {
-      for (const item of OrderItems) {
-        const product = await Product.findByPk(item.product_id);
-        if (!product) continue;
-
-        const unitPrice = parseFloat(item.unit_price || product.price || 0);
-        const lineTotal = (item.quantity || 1) * unitPrice;
-
-        await OrderItem.create({
-          order_id: order.id,
-          product_id: product.id,
-          quantity: item.quantity,
-          unit_price: unitPrice,
-          line_total: lineTotal,
-        });
-      }
+    // 1) เช็คว่ามี OrderItems ส่งมาไหม
+    if (!OrderItems || !Array.isArray(OrderItems) || OrderItems.length === 0) {
+      return res.status(400).json({ error: "OrderItems are required" });
     }
 
+    // 2) สร้าง order หลัก
+    const order = await Order.create(orderData);
+
+    // 3) loop OrderItems
+    for (const item of OrderItems) {
+      const product = await Product.findByPk(item.product_id);
+
+      if (!product) {
+        // ❌ ถ้า product_id ไม่เจอ → ยกเลิก order และ return error
+        await order.destroy();
+        return res.status(400).json({
+          error: `Product with id ${item.product_id} not found`,
+        });
+      }
+
+      const unitPrice = parseFloat(item.unit_price || product.price || 0);
+      const lineTotal = (item.quantity || 1) * unitPrice;
+
+      await OrderItem.create({
+        order_id: order.id,
+        product_id: product.id,
+        quantity: item.quantity,
+        unit_price: unitPrice,
+        line_total: lineTotal,
+      });
+    }
+
+    // 4) ดึง order + items กลับมา
     const newOrder = await Order.findByPk(order.id, {
       include: [{ model: OrderItem, include: [Product] }],
     });
@@ -93,11 +106,46 @@ export const getOrderById = async (req, res) => {
 // ✅ UPDATE
 export const updateOrder = async (req, res) => {
   try {
-    const order = await Order.findByPk(req.params.id);
+    const { OrderItems, ...orderData } = req.body;
+
+    const order = await Order.findByPk(req.params.id, { include: [OrderItem] });
     if (!order) return res.status(404).json({ error: "Order not found" });
 
-    await order.update(req.body);
-    res.json(order);
+    // อัปเดตข้อมูลหลัก
+    await order.update(orderData);
+
+    if (OrderItems && Array.isArray(OrderItems)) {
+      // ลบ items เก่าออก
+      await OrderItem.destroy({ where: { order_id: order.id } });
+
+      // เพิ่มใหม่
+      for (const item of OrderItems) {
+        const product = await Product.findByPk(item.product_id);
+
+        if (!product) {
+          return res.status(400).json({
+            error: `Product with id ${item.product_id} not found`,
+          });
+        }
+
+        const unitPrice = parseFloat(item.unit_price || product.price || 0);
+        const lineTotal = (item.quantity || 1) * unitPrice;
+
+        await OrderItem.create({
+          order_id: order.id,
+          product_id: product.id,
+          quantity: item.quantity,
+          unit_price: unitPrice,
+          line_total: lineTotal,
+        });
+      }
+    }
+
+    const updated = await Order.findByPk(order.id, {
+      include: [{ model: OrderItem, include: [Product] }],
+    });
+
+    res.json(updated);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
