@@ -8,24 +8,15 @@ export default function EditQuotePage() {
   const router = useRouter();
 
   const [quote, setQuote] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editIndex, setEditIndex] = useState(null);
 
   async function fetchQuote() {
     try {
       const res = await fetch(`/api/quotes/${id}`, { credentials: "include" });
       const data = await res.json();
-      setQuote({
-        ...data,
-        QuoteItems: data.QuoteItems.map((item) => ({
-          ...item,
-          product_id: Number(item.product_id),
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-        })),
-      });
+      setQuote(data);
     } catch (err) {
       setError("Failed to load quote");
     } finally {
@@ -74,13 +65,11 @@ export default function EditQuotePage() {
   }
 
   function addItem() {
-    const newIndex = quote.QuoteItems.length;
     const updatedItems = [
       ...quote.QuoteItems,
       { product_id: "", quantity: 1, unit_price: 0, line_total: 0 },
     ];
     setQuote({ ...quote, QuoteItems: updatedItems });
-    setEditIndex(newIndex);
   }
 
   function removeItem(index) {
@@ -89,13 +78,15 @@ export default function EditQuotePage() {
     setQuote({ ...quote, QuoteItems: updated });
   }
 
-  async function onSave() {
+  async function onSave(e) {
+    e.preventDefault();
     try {
       const payload = {
         customer_name: quote.customer_name,
         customer_email: quote.customer_email,
         company_name: quote.company_name,
         valid_until: quote.valid_until,
+        notes: quote.notes,
         status: quote.status,
         QuoteItems: quote.QuoteItems.map((item) => ({
           product_id: item.product_id,
@@ -126,23 +117,72 @@ export default function EditQuotePage() {
   ).toFixed(2);
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Edit Quote</h1>
-          <p className="text-sm text-gray-500">Quote ID: QT-{quote.id}</p>
-        </div>
+    <form onSubmit={onSave} className="space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Edit Quote</h1>
         <button
-          onClick={onSave}
+          type="submit"
           className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
         >
           Save Changes
         </button>
       </div>
 
+      {/* Customer Info */}
+      <div className="rounded border bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-sm font-semibold">Customer Information</h2>
+        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-600">Customer Name</label>
+            <input
+              type="text"
+              value={quote.customer_name}
+              onChange={(e) => setQuote({ ...quote, customer_name: e.target.value })}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">Customer Email</label>
+            <input
+              type="email"
+              value={quote.customer_email}
+              onChange={(e) => setQuote({ ...quote, customer_email: e.target.value })}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">Company</label>
+            <input
+              type="text"
+              value={quote.company_name}
+              onChange={(e) => setQuote({ ...quote, company_name: e.target.value })}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600">Valid Until</label>
+            <input
+              type="date"
+              value={quote.valid_until || ""}
+              onChange={(e) => setQuote({ ...quote, valid_until: e.target.value })}
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-xs font-medium text-gray-600">Notes</label>
+          <textarea
+            value={quote.notes || ""}
+            onChange={(e) => setQuote({ ...quote, notes: e.target.value })}
+            className="w-full rounded border px-3 py-2 text-sm"
+            rows={3}
+          />
+        </div>
+      </div>
+
       {/* Quote Items */}
-      <div className="mt-6 rounded border bg-white p-4 shadow-sm">
+      <div className="rounded border bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold">Quote Items</h2>
         <div className="space-y-3">
           {quote.QuoteItems?.map((item, idx) => (
@@ -150,60 +190,31 @@ export default function EditQuotePage() {
               key={idx}
               className="flex flex-col gap-2 rounded border p-3 md:flex-row md:items-center md:justify-between"
             >
-              {/* Product */}
               <div className="flex-1">
-                {editIndex === idx ? (
-                  <ProductSelect
-                    value={item.product_id}
-                    onChange={(val) => handleItemChange(idx, "product_id", val)}
-                    products={products}
-                  />
-                ) : (
-                  <p className="font-medium">
-                    {products.find((p) => p.id === Number(item.product_id))?.name ||
-                      "Unknown Product"}
-                  </p>
-                )}
+                <ProductSelect
+                  value={item.product_id}
+                  onChange={(val) => handleItemChange(idx, "product_id", val)}
+                  products={products}
+                />
               </div>
-
-              {/* Quantity */}
               <div className="w-20 text-right">
-                {editIndex === idx ? (
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    min="1"
-                    onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
-                    className="w-full rounded border px-2 py-1 text-right text-sm"
-                  />
-                ) : (
-                  <span className="text-sm">{item.quantity}</span>
-                )}
+                <input
+                  type="number"
+                  value={item.quantity}
+                  min="1"
+                  onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                  className="w-full rounded border px-2 py-1 text-right text-sm"
+                />
               </div>
-
-              {/* Unit Price */}
               <div className="w-28 text-right text-sm text-gray-700">
                 ${parseFloat(item.unit_price || 0).toFixed(2)}
               </div>
-
-              {/* Line Total */}
               <div className="w-28 text-right font-bold text-red-600">
                 ${parseFloat(item.line_total || 0).toFixed(2)}
               </div>
-
-              {/* Actions */}
               <div className="flex gap-2">
                 <button
-                  onClick={() => setEditIndex(editIndex === idx ? null : idx)}
-                  className={`rounded px-3 py-1 text-xs text-white ${
-                    editIndex === idx
-                      ? "bg-gray-500 hover:bg-gray-600"
-                      : "bg-yellow-500 hover:bg-yellow-600"
-                  }`}
-                >
-                  {editIndex === idx ? "Cancel" : "Edit"}
-                </button>
-                <button
+                  type="button"
                   onClick={() => removeItem(idx)}
                   className="rounded bg-red-500 px-3 py-1 text-xs text-white hover:bg-red-600"
                 >
@@ -213,28 +224,25 @@ export default function EditQuotePage() {
             </div>
           ))}
         </div>
-
-        {/* Add Product */}
         <div className="mt-4">
           <button
+            type="button"
             onClick={addItem}
             className="rounded bg-green-500 px-4 py-2 text-sm text-white hover:bg-green-600"
           >
             + Add Product
           </button>
         </div>
-
-        {/* Total */}
         <div className="mt-4 flex justify-between border-t pt-3 font-semibold">
           <span>Total Quote Value:</span>
           <span className="text-red-600">${totalValue}</span>
         </div>
       </div>
-    </div>
+    </form>
   );
 }
 
-/* ✅ ProductSelect with hide_price logic */
+/* ✅ ProductSelect */
 function ProductSelect({ value, onChange, products }) {
   const [query, setQuery] = useState("");
 

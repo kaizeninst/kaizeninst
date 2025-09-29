@@ -79,6 +79,10 @@ export default function QuoteDetailPage() {
               <p>{new Date(quote.requested_at).toLocaleDateString()}</p>
             </div>
           </div>
+          <div className="mt-4">
+            <p className="font-medium">Notes</p>
+            <p className="text-sm text-gray-700">{quote.notes || "-"}</p>
+          </div>
         </div>
 
         {/* Quote Status */}
