@@ -50,6 +50,17 @@ export default function OrderManagementPage() {
     fetchSummary();
   }, []);
 
+  async function updatePayment(id, newStatus) {
+    await fetch(`/api/orders/${id}/payment`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ payment_status: newStatus }),
+    });
+    fetchOrders();
+    fetchSummary();
+  }
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -143,15 +154,10 @@ export default function OrderManagementPage() {
                     THB {Number(o.total).toFixed(2)}
                   </td>
                   <td className="p-3">
-                    {o.payment_status === "paid" ? (
-                      <span className="rounded bg-green-100 px-2 py-1 text-xs text-green-700">
-                        Paid
-                      </span>
-                    ) : (
-                      <span className="rounded bg-red-100 px-2 py-1 text-xs text-red-700">
-                        Unpaid
-                      </span>
-                    )}
+                    <PaymentBadge
+                      value={o.payment_status}
+                      onChange={(val) => updatePayment(o.id, val)}
+                    />
                   </td>
                   <td className="p-3">
                     <StatusBadge
@@ -220,6 +226,24 @@ function StatusBadge({ value, onChange }) {
       <option value="processing">Processing</option>
       <option value="shipped">Shipped</option>
       <option value="delivered">Delivered</option>
+    </select>
+  );
+}
+
+/* Payment Badge */
+function PaymentBadge({ value, onChange }) {
+  const colors = {
+    paid: "bg-green-100 text-green-700",
+    unpaid: "bg-red-100 text-red-700",
+  };
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`rounded border px-2 py-1 text-xs ${colors[value]} focus:outline-none`}
+    >
+      <option value="unpaid">Unpaid</option>
+      <option value="paid">Paid</option>
     </select>
   );
 }

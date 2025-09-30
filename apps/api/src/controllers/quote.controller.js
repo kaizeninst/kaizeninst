@@ -208,23 +208,35 @@ export const convertQuoteToOrder = async (req, res) => {
       });
     }
 
-    const order = await models.Order.create(
-      {
-        customer_name: quote.customer_name,
-        customer_email: quote.customer_email,
-        total: quote.QuoteItems.reduce((sum, item) => sum + parseFloat(item.line_total || 0), 0),
-        order_items: quote.QuoteItems.map((qi) => ({
-          product_id: qi.product_id,
-          quantity: qi.quantity,
-          unit_price: qi.unit_price,
-        })),
-      },
-      { include: [models.OrderItem] }
-    );
+    // 1) สร้าง Order หลัก
+    const order = await models.Order.create({
+      customer_name: quote.customer_name,
+      customer_email: quote.customer_email,
+      total: quote.QuoteItems.reduce((sum, item) => sum + parseFloat(item.line_total || 0), 0),
+      payment_status: "unpaid",
+      order_status: "pending",
+    });
 
+    // 2) Loop สร้าง OrderItems จาก QuoteItems
+    for (const qi of quote.QuoteItems) {
+      await models.OrderItem.create({
+        order_id: order.id,
+        product_id: qi.product_id,
+        quantity: qi.quantity,
+        unit_price: qi.unit_price,
+        line_total: qi.line_total,
+      });
+    }
+
+    // 3) อัปเดตสถานะ quote → converted
     await quote.update({ status: "converted" }).catch(() => {});
 
-    res.json({ message: "Quote converted to order", order });
+    // 4) ดึง order พร้อม items กลับมา
+    const newOrder = await models.Order.findByPk(order.id, {
+      include: [{ model: models.OrderItem, include: [models.Product] }],
+    });
+
+    res.json({ message: "Quote converted to order", order: newOrder });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
