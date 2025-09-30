@@ -10,6 +10,7 @@ export default function OrderDetailPage() {
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   async function fetchOrder() {
     try {
@@ -43,6 +44,21 @@ export default function OrderDetailPage() {
     fetchOrder();
   }
 
+  async function deleteOrder() {
+    if (!confirm("Are you sure you want to delete this order?")) return;
+    setDeleting(true);
+    try {
+      await fetch(`/api/orders/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      router.push("/admin/orders");
+    } catch (err) {
+      console.error("Delete failed:", err);
+      setDeleting(false);
+    }
+  }
+
   useEffect(() => {
     if (id) fetchOrder();
   }, [id]);
@@ -61,12 +77,22 @@ export default function OrderDetailPage() {
           <h1 className="mt-2 text-2xl font-bold">Order Details</h1>
           <p className="text-gray-500">Order ID: OD-{order.id}</p>
         </div>
-        <button
-          onClick={() => router.push(`/admin/orders/${id}/edit`)}
-          className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-        >
-          Edit Order
-        </button>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => router.push(`/admin/orders/${id}/edit`)}
+            className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600"
+          >
+            Edit Order
+          </button>
+          <button
+            onClick={deleteOrder}
+            disabled={deleting}
+            className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {deleting ? "Deleting..." : "Delete"}
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -138,13 +164,13 @@ export default function OrderDetailPage() {
                 </p>
               </div>
               <div className="font-semibold text-red-600">
-                THB {Number(item.line_total).toFixed(2)}
+                THB {Number(item.line_total || 0).toFixed(2)}
               </div>
             </div>
           ))}
         </div>
         <div className="mt-3 text-right font-bold text-red-600">
-          Total Order Value: THB {Number(order.total).toFixed(2)}
+          Total Order Value: THB {Number(order.total || 0).toFixed(2)}
         </div>
       </div>
 
