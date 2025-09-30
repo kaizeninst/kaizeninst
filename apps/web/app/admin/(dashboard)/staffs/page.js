@@ -44,6 +44,24 @@ export default function StaffManagementPage() {
     fetchStaffs(1, debouncedSearch);
   }, [debouncedSearch]);
 
+  // ✅ Delete staff
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this staff?")) return;
+    try {
+      const res = await fetch(`/api/staff/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete staff");
+
+      // reload staff list
+      fetchStaffs(page, debouncedSearch);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -65,7 +83,6 @@ export default function StaffManagementPage() {
             />
           </div>
 
-          {/* ✅ ปุ่ม Add Staff ไปหน้า Create */}
           <Link
             href="/admin/staffs/create"
             className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
@@ -129,7 +146,10 @@ export default function StaffManagementPage() {
                         <button className="text-blue-500 hover:text-blue-700">
                           <Edit2 size={16} />
                         </button>
-                        <button className="text-red-500 hover:text-red-700">
+                        <button
+                          onClick={() => handleDelete(s.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
