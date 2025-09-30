@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 
 /** ดึง token จาก Cookie หรือ Authorization: Bearer <token> */
 function extractToken(req) {
-  const fromCookie = req.cookies?.token;
+  const fromCookie = req.cookies?.accessToken;
   const fromHeader = req.headers.authorization?.replace(/^Bearer\s+/i, "");
   return fromCookie || fromHeader || null;
 }

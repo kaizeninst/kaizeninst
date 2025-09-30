@@ -45,11 +45,41 @@ export const createStaff = async (req, res) => {
   }
 };
 
-// ✅ READ ALL
-export const getAllStaff = async (_req, res) => {
+// ✅ READ ALL (with filters + pagination)
+export const getAllStaff = async (req, res) => {
   try {
-    const staff = await Staff.findAll();
-    res.json(staff);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const { role, status, search } = req.query;
+
+    const where = {};
+    if (role) where.role = role; // filter by role: "admin" | "staff"
+    if (status) where.status = status; // filter by status: "active" | "inactive"
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { username: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    const { count, rows } = await Staff.findAndCountAll({
+      where,
+      offset,
+      limit,
+      order: [["created_at", "DESC"]],
+    });
+
+    res.json({
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
