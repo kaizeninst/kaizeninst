@@ -12,6 +12,11 @@ export default (sequelize) => {
         unique: true,
       },
       password_hash: { type: DataTypes.STRING(255), allowNull: true },
+      must_change_password: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
       role: { type: DataTypes.ENUM("admin", "staff"), allowNull: false, defaultValue: "staff" },
       status: {
         type: DataTypes.ENUM("active", "inactive"),

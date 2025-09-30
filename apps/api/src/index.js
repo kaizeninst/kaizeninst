@@ -48,7 +48,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/quotes", quoteRoutes);
-// app.use("/api/staff", staffRoutes);
+app.use("/api/staff", staffRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, async () => {
