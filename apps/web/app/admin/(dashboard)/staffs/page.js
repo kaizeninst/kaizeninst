@@ -2,18 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
+import Pagination from "../../../../components/Pagination";
 
 export default function StaffManagementPage() {
   const [staffs, setStaffs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  });
+  const [pagination, setPagination] = useState(null);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -139,51 +135,11 @@ export default function StaffManagementPage() {
             </table>
           </div>
 
-          {/* Pagination */}
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Showing {(pagination.page - 1) * pagination.limit + 1}–
-              {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
-            </p>
-
-            <div className="flex gap-2">
-              <button
-                disabled={pagination.page === 1}
-                onClick={() => fetchStaffs(page - 1, debouncedSearch)}
-                className={`rounded border px-3 py-1 ${
-                  pagination.page === 1
-                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-red-500 text-white hover:bg-red-600"
-                }`}
-              >
-                Previous
-              </button>
-
-              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => fetchStaffs(p, debouncedSearch)}
-                  className={`rounded border px-3 py-1 ${
-                    page === p ? "bg-red-600 text-white" : "bg-white hover:bg-gray-50"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-
-              <button
-                disabled={pagination.page === pagination.totalPages}
-                onClick={() => fetchStaffs(page + 1, debouncedSearch)}
-                className={`rounded border px-3 py-1 ${
-                  pagination.page === pagination.totalPages
-                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-red-500 text-white hover:bg-red-600"
-                }`}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pagination
+            pagination={pagination}
+            page={page}
+            onPageChange={(p) => fetchStaffs(p, debouncedSearch)}
+          />
         </>
       )}
     </div>
