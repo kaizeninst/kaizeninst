@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
+import Link from "next/link";
 import Pagination from "../../../../components/Pagination";
 
 export default function StaffManagementPage() {
@@ -64,9 +65,13 @@ export default function StaffManagementPage() {
             />
           </div>
 
-          <button className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700">
+          {/* ✅ ปุ่ม Add Staff ไปหน้า Create */}
+          <Link
+            href="/admin/staffs/create"
+            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
+          >
             <Plus className="h-4 w-4" /> Add Staff
-          </button>
+          </Link>
         </div>
       </div>
 
