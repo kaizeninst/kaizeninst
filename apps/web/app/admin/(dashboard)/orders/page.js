@@ -69,6 +69,12 @@ export default function OrderManagementPage() {
           <h1 className="text-2xl font-bold">Order Management</h1>
           <p className="text-sm text-gray-500">Manage and track customer orders</p>
         </div>
+        <button
+          onClick={() => router.push("/admin/orders/create")}
+          className="flex items-center gap-2 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+        >
+          + Add Order
+        </button>
       </div>
 
       {/* Summary cards */}
