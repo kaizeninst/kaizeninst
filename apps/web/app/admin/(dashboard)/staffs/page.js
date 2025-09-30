@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
 import Link from "next/link";
-import Pagination from "../../../../components/Pagination";
+import Pagination from "@/components/Pagination";
+import { useToast } from "@/components/ToastProvider";
 
 export default function StaffManagementPage() {
+  const { addToast } = useToast();
   const [staffs, setStaffs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -44,7 +46,6 @@ export default function StaffManagementPage() {
     fetchStaffs(1, debouncedSearch);
   }, [debouncedSearch]);
 
-  // ✅ Delete staff
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this staff?")) return;
     try {
@@ -55,10 +56,10 @@ export default function StaffManagementPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete staff");
 
-      // reload staff list
+      addToast("Staff deleted successfully ✅", "success");
       fetchStaffs(page, debouncedSearch);
     } catch (err) {
-      alert(err.message);
+      addToast(err.message, "error");
     }
   };
 
