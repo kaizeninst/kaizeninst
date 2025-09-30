@@ -144,7 +144,10 @@ export default function StaffManagementPage() {
                     </td>
                     <td className="px-4 py-2">
                       <div className="flex gap-2">
-                        <button className="text-blue-500 hover:text-blue-700">
+                        <button
+                          onClick={() => (window.location.href = `/admin/staffs/${s.id}/edit`)}
+                          className="text-blue-500 hover:text-blue-700"
+                        >
                           <Edit2 size={16} />
                         </button>
                         <button

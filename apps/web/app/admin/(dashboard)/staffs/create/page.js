@@ -9,7 +9,6 @@ export default function AddStaffPage() {
   const [form, setForm] = useState({
     name: "",
     username: "",
-    email: "",
     password: "",
     role: "staff",
     status: "active",
@@ -102,19 +101,6 @@ export default function AddStaffPage() {
               type="text"
               name="username"
               value={form.username}
-              onChange={handleChange}
-              required
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring focus:ring-red-200"
-            />
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="mb-1 block text-sm font-medium">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={form.email}
               onChange={handleChange}
               required
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring focus:ring-red-200"
