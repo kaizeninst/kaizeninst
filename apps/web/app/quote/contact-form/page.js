@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
 import Navbar from "../../../components/layout/Navbar";
 import Footer from "../../../components/layout/Footer";
-import { products } from "../../../data/productsData";
+import { products } from "@/data/productsdata";
 
 const taxRate = 0.07;
 
@@ -48,7 +48,6 @@ export default function RequestQuotePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
       <main className="container mx-auto flex-grow px-4 py-8">
         <div className="space-y-8">
           <div className="flex flex-col items-center justify-center">
@@ -189,7 +188,6 @@ export default function RequestQuotePage() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

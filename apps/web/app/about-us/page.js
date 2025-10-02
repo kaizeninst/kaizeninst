@@ -53,7 +53,6 @@ const teamMembers = [
 export default function AboutUsPage() {
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 text-gray-800">
-      <Navbar />
       <div className="flex flex-grow flex-col">
         {/* Hero Banner Section */}
         <section className="w-full">
@@ -155,7 +154,6 @@ export default function AboutUsPage() {
           </div>
         </section>
       </div>
-      <Footer />
     </div>
   );
 }

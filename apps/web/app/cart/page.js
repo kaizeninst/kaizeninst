@@ -149,11 +149,9 @@ const Cart = () => {
 export default function CartPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
       <main className="container mx-auto flex-grow px-4 py-8">
         <Cart />
       </main>
-      <Footer />
     </div>
   );
 }

@@ -30,7 +30,6 @@ export default function ContactPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
       <div className="p-6 sm:p-8 md:p-12 lg:p-16">
         <div className="mx-auto max-w-5xl space-y-6">
           <div className="flex flex-col items-center space-y-2 text-center">
@@ -166,7 +165,6 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }
