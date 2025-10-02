@@ -1,13 +1,17 @@
 "use client";
+
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+// Components
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { products } from "../../data/productsdata";
 
+// -------------------- Pagination Component --------------------
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   const [inputPage, setInputPage] = useState(currentPage.toString());
 
@@ -18,9 +22,9 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   const handleInputChange = (e) => {
     const value = e.target.value;
     setInputPage(value);
-    if (value === "") {
-      return;
-    }
+
+    if (!value) return;
+
     const pageNumber = Number(value);
     if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
       onPageChange(pageNumber);
@@ -29,39 +33,41 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
   return (
     <div className="mt-8 flex items-center justify-center space-x-2">
+      {/* Prev button */}
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f80000] text-gray-700 transition-colors hover:bg-[#A80000] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f80000] text-white transition-colors hover:bg-[#A80000] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <ChevronLeft className="h-5 w-5" color="white" />
+        <ChevronLeft className="h-5 w-5" />
       </button>
 
-      {/* Page number */}
+      {/* Page number input */}
       <span className="flex items-center text-sm font-semibold text-gray-700">
         <input
           type="number"
           value={inputPage}
           onChange={handleInputChange}
-          className="w-12 rounded-lg border px-1 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
           min="1"
           max={totalPages}
+          className="w-12 rounded-lg border px-1 py-1 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <span className="ml-1">of {totalPages}</span>
       </span>
 
+      {/* Next button */}
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f80000] text-gray-700 transition-colors hover:bg-[#A80000] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f80000] text-white transition-colors hover:bg-[#A80000] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <ChevronRight className="h-5 w-5" color="white" />
+        <ChevronRight className="h-5 w-5" />
       </button>
     </div>
   );
 };
 
-// Filters
+// -------------------- Filters Component --------------------
 function Filters({
   selectedCategory,
   setSelectedCategory,
@@ -86,9 +92,9 @@ function Filters({
           onChange={(e) => setSelectedCategory(e.target.value)}
           className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>
@@ -102,18 +108,19 @@ function Filters({
           onChange={(e) => setSelectedBrand(e.target.value)}
           className="w-full rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          {brands.map((brand) => (
-            <option key={brand} value={brand}>
-              {brand}
+          {brands.map((b) => (
+            <option key={b} value={b}>
+              {b}
             </option>
           ))}
         </select>
       </div>
 
-      {/* Price Range Filter */}
+      {/* Price Range */}
       <div className="space-y-4">
         <label className="block font-medium">Price Range</label>
         <div className="flex flex-col space-y-2">
+          {/* Input (min-max) */}
           <div className="flex items-center space-x-2">
             <input
               type="number"
@@ -129,6 +136,8 @@ function Filters({
               className="w-1/2 rounded-lg border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {/* Slider */}
           <div className="flex items-center space-x-2">
             <input
               type="range"
@@ -150,7 +159,7 @@ function Filters({
         </div>
       </div>
 
-      {/* In Stock Only Filter */}
+      {/* In Stock Only */}
       <div className="flex items-center space-x-2">
         <input
           type="checkbox"
@@ -164,11 +173,15 @@ function Filters({
   );
 }
 
+// -------------------- Main Products Page --------------------
 export default function ProductsPage() {
   const searchParams = useSearchParams();
+
+  // Initial filter state from URL
   const initialBrand = searchParams.get("brand") || "All";
   const initialCategory = searchParams.get("category") || "All";
 
+  // States
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBrand, setSelectedBrand] = useState(initialBrand);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
@@ -180,19 +193,23 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
   const productsPerPage = 8;
 
+  // Load brands & categories from products
   useEffect(() => {
     const allBrands = ["All", ...new Set(products.map((p) => p.brand))];
-    setBrands(allBrands);
     const allCategories = ["All", ...new Set(products.map((p) => p.category))];
+
+    setBrands(allBrands);
     setCategories(allCategories);
+
     const prices = products.map((p) => p.price);
     setMinPrice(Math.min(...prices));
     setMaxPrice(Math.max(...prices));
   }, []);
 
-  // Filter and sort products
+  // Filter + sort products
   const filteredAndSortedProducts = products
     .filter((product) => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -210,28 +227,28 @@ export default function ProductsPage() {
       return 0;
     });
 
-  // Pagination logic
+  // Pagination
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = filteredAndSortedProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(filteredAndSortedProducts.length / productsPerPage);
 
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
+  const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
 
-  // Reset to first page when filters change
+  // Reset to page 1 if filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedBrand, selectedCategory, minPrice, maxPrice, inStockOnly, sortBy]);
 
+  // -------------------- Render --------------------
   return (
     <div>
       <Navbar />
+
       <div className="p-8 md:p-12 lg:p-16">
         <div className="space-y-8">
           <div className="flex flex-col space-y-6 md:flex-row md:space-x-8 md:space-y-0">
-            {/* Mobile Filter Button */}
+            {/* --------- Mobile Filter Button --------- */}
             <div className="md:hidden">
               <button
                 onClick={() => setIsFilterOpen(true)}
@@ -241,7 +258,7 @@ export default function ProductsPage() {
               </button>
             </div>
 
-            {/* Mobile Drawer */}
+            {/* --------- Mobile Drawer --------- */}
             <div
               className={`fixed inset-y-0 right-0 z-50 w-full transform overflow-y-auto bg-white p-6 shadow-xl transition-transform duration-300 ease-in-out md:hidden ${
                 isFilterOpen ? "translate-x-0" : "translate-x-full"
@@ -256,6 +273,7 @@ export default function ProductsPage() {
                   ✕
                 </button>
               </div>
+
               <Filters
                 selectedCategory={selectedCategory}
                 setSelectedCategory={setSelectedCategory}
@@ -272,7 +290,7 @@ export default function ProductsPage() {
               />
             </div>
 
-            {/* Desktop sidebar filter */}
+            {/* --------- Desktop Sidebar --------- */}
             <div className="hidden md:block md:w-1/4">
               <h3 className="mb-4 text-2xl font-semibold">Filters</h3>
 
@@ -290,6 +308,8 @@ export default function ProductsPage() {
                 brands={brands}
                 categories={categories}
               />
+
+              {/* Sort option */}
               <div className="mt-4 flex justify-start">
                 <select
                   value={sortBy}
@@ -304,10 +324,11 @@ export default function ProductsPage() {
               </div>
             </div>
 
-            {/* Product Grid */}
+            {/* --------- Product Grid --------- */}
             <div className="w-full md:w-3/4">
+              {/* Search Bar */}
               <div className="mb-4 flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
-                <div className="relative w-full md:w-full">
+                <div className="relative w-full">
                   <input
                     type="text"
                     placeholder="Search products..."
@@ -333,24 +354,28 @@ export default function ProductsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Product List */}
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {currentProducts.length > 0 ? (
                   currentProducts.map((product) => (
-                    <Link href={`/products/${product.id}`} key={product.id} className="group block">
-                      <div className="group block overflow-hidden rounded-lg bg-white shadow-md transition-shadow hover:shadow-xl">
-                        <div>
+                    <Link href={`/products/${product.id}`} key={product.id}>
+                      <div className="group overflow-hidden rounded-xl border bg-white shadow transition hover:shadow-lg">
+                        <div className="relative h-56 w-full overflow-hidden">
                           <Image
                             src={product.image}
                             alt={product.name}
                             width={400}
                             height={300}
-                            className="h-48 w-full object-cover transition-transform group-hover:scale-105"
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                             unoptimized
                           />
                         </div>
-                        <div className="p-4">
-                          <h3 className="text-lg font-semibold">{product.name}</h3>
-                          <p className="font-medium text-[#A80000]">฿{product.price}</p>
+                        <div className="flex flex-col space-y-2 p-4">
+                          <h3 className="line-clamp-2 text-base font-semibold transition group-hover:text-[#A80000]">
+                            {product.name}
+                          </h3>
+                          <p className="text-lg font-bold text-[#f80000]">฿{product.price}</p>
                         </div>
                       </div>
                     </Link>
@@ -361,6 +386,8 @@ export default function ProductsPage() {
                   </p>
                 )}
               </div>
+
+              {/* Pagination */}
               {filteredAndSortedProducts.length > productsPerPage && (
                 <Pagination
                   currentPage={currentPage}
@@ -372,6 +399,7 @@ export default function ProductsPage() {
           </div>
         </div>
       </div>
+
       <Footer />
     </div>
   );
