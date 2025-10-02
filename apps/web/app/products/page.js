@@ -7,9 +7,9 @@ import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // Components
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
-import { products } from "../../data/productsdata";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { products } from "@/data/productsdata";
 
 // -------------------- Pagination Component --------------------
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
@@ -334,7 +334,7 @@ export default function ProductsPage() {
                     placeholder="Search products..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full rounded-lg border py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-[5px] border border-[#8D8D8D] py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <svg
