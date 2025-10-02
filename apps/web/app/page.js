@@ -15,7 +15,7 @@ const brandsWithImages = uniqueBrands.map((brandName) => {
     image: product?.brand_image ?? "https://placehold.co/400x400?text=No+Image",
   };
 });
-const brandsToShow = brandsWithImages.slice(0, 8); // show 8 brands
+const brandsToShow = brandsWithImages.slice(0, 8);
 
 const heroSlides = ["/assets/Black.jpg", "/assets/Black.jpg", "/assets/Black.jpg"];
 
@@ -26,7 +26,7 @@ const promotionBanners = [
 ];
 
 // ============================================================================
-// HERO BANNER (FULLSCREEN CAROUSEL)
+// HERO BANNER
 // ============================================================================
 const HeroBanner = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -51,6 +51,7 @@ const HeroBanner = () => {
       <div className="absolute inset-0 flex items-center justify-center bg-black/30">
         <h1 className="text-4xl font-bold text-white">Hero Banner</h1>
       </div>
+      {/* Prev/Next */}
       <button
         onClick={() =>
           setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)
@@ -65,12 +66,15 @@ const HeroBanner = () => {
       >
         <MoveRight />
       </button>
+      {/* Indicators */}
       <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 space-x-2">
         {heroSlides.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrentSlide(idx)}
-            className={`h-3 w-3 rounded-full ${idx === currentSlide ? "bg-[#A80000]" : "bg-gray-400"}`}
+            className={`h-3 w-3 rounded-full ${
+              idx === currentSlide ? "bg-primary" : "bg-secondary"
+            }`}
           />
         ))}
       </div>
@@ -84,9 +88,9 @@ const HeroBanner = () => {
 const HomePageContent = () => {
   return (
     <div className="container mx-auto space-y-12 px-4 py-8">
-      {/* Promotion Banners Section */}
+      {/* Promotion */}
       <div>
-        <h2 className="mb-4 text-xl font-bold">Promotion</h2>
+        <h2 className="text-foreground mb-4 text-xl font-bold">Promotion</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="md:col-span-2">
             <Link href="/promotion/1">
@@ -100,37 +104,28 @@ const HomePageContent = () => {
               />
             </Link>
           </div>
-
           <div className="grid gap-4 md:grid-rows-2">
-            <Link href="/promotion/2">
-              <Image
-                src={promotionBanners[1]}
-                alt="Promotion Banner 2"
-                width={400}
-                height={200}
-                className="h-full w-full rounded-lg object-cover shadow-lg"
-                unoptimized
-              />
-            </Link>
-            <Link href="/promotion/3">
-              <Image
-                src={promotionBanners[2]}
-                alt="Promotion Banner 3"
-                width={400}
-                height={200}
-                className="h-full w-full rounded-lg object-cover shadow-lg"
-                unoptimized
-              />
-            </Link>
+            {promotionBanners.slice(1).map((banner, i) => (
+              <Link href={`/promotion/${i + 2}`} key={i}>
+                <Image
+                  src={banner}
+                  alt={`Promotion Banner ${i + 2}`}
+                  width={400}
+                  height={200}
+                  className="h-full w-full rounded-lg object-cover shadow-lg"
+                  unoptimized
+                />
+              </Link>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Brand Categories Section */}
+      {/* Brand Categories */}
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-3xl font-bold">Category</h2>
-          <Link href="/products" className="text-[#A80000] hover:underline">
+          <h2 className="text-foreground text-3xl font-bold">Category</h2>
+          <Link href="/products" className="text-primary hover:underline">
             View All &gt;
           </Link>
         </div>
@@ -141,7 +136,7 @@ const HomePageContent = () => {
               key={brandObj.name}
               className="group block"
             >
-              <div className="relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-white shadow-md transition-shadow hover:shadow-xl">
+              <div className="bg-background relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg shadow-md transition-shadow hover:shadow-xl">
                 <Image
                   src={brandObj.image}
                   alt={brandObj.name}
@@ -149,7 +144,7 @@ const HomePageContent = () => {
                   unoptimized
                   className="object-cover"
                 />
-                <h3 className="absolute text-2xl font-bold text-gray-800 transition-colors group-hover:text-blue-600">
+                <h3 className="text-foreground group-hover:text-primary absolute text-2xl font-bold transition-colors">
                   {brandObj.name}
                 </h3>
               </div>
@@ -158,18 +153,18 @@ const HomePageContent = () => {
         </div>
       </section>
 
-      {/* New Product Section */}
+      {/* New Products */}
       <section>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-3xl font-bold">New Product</h2>
-          <Link href="/products" className="text-[#A80000] hover:underline">
+          <h2 className="text-foreground text-3xl font-bold">New Product</h2>
+          <Link href="/products" className="text-primary hover:underline">
             View All &gt;
           </Link>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {products.slice(0, 8).map((product) => (
             <Link href={`/products/${product.id}`} key={product.id} className="group block">
-              <div className="overflow-hidden rounded-lg bg-white shadow-md transition-shadow hover:shadow-xl">
+              <div className="bg-background overflow-hidden rounded-lg shadow-md transition-shadow hover:shadow-xl">
                 <div className="relative aspect-square w-full">
                   <Image
                     src={product.image}
@@ -180,10 +175,10 @@ const HomePageContent = () => {
                   />
                 </div>
                 <div className="p-4">
-                  <h3 className="text-lg font-semibold">{product.name}</h3>
+                  <h3 className="text-foreground text-lg font-semibold">{product.name}</h3>
                 </div>
                 <div className="p-4 pt-0">
-                  <h1 className="font-semibold text-[#A80000]">฿{product.price}</h1>
+                  <h1 className="text-primary font-semibold">฿{product.price}</h1>
                 </div>
               </div>
             </Link>
@@ -197,15 +192,11 @@ const HomePageContent = () => {
 // ============================================================================
 // MAIN APP
 // ============================================================================
-const App = () => {
+export default function Home() {
   return (
-    <div className="App">
-      <Navbar />
+    <>
       <HeroBanner />
       <HomePageContent />
-      <Footer />
-    </div>
+    </>
   );
-};
-
-export default App;
+}
