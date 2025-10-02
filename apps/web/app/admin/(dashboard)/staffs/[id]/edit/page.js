@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useToast } from "@/components/ToastProvider";
+import { useToast } from "@/components/layout/ToastProvider";
 
 export default function EditStaffPage() {
   const { id } = useParams();

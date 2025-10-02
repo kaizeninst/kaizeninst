@@ -7,8 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // Components
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import { products } from "@/data/productsdata";
 
 // -------------------- Pagination Component --------------------

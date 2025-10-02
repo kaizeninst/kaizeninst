@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
 import Link from "next/link";
 import Pagination from "@/components/Pagination";
-import { useToast } from "@/components/ToastProvider";
+import { useToast } from "@/components/layout/ToastProvider";
 
 export default function StaffManagementPage() {
   const { addToast } = useToast();

@@ -4,8 +4,8 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
-import Navbar from "../../../components/Navbar";
-import Footer from "../../../components/Footer";
+import Navbar from "../../../components/layout/Navbar";
+import Footer from "../../../components/layout/Footer";
 import { products } from "../../../data/productsData";
 
 const taxRate = 0.07;

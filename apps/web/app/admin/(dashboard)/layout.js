@@ -1,4 +1,4 @@
-import Sidebar from "@/components/admin/Sidebar";
+import Sidebar from "@/components/layout/Sidebar";
 
 export const metadata = {
   title: "Admin Dashboard",
