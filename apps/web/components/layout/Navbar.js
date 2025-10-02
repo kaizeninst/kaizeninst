@@ -33,7 +33,7 @@ export default function Navbar() {
         <div className="flex-shrink-0">
           <Link
             href="/"
-            className="bg-primary rounded-[5px] px-6 py-5 font-bold text-white shadow-lg transition-all duration-300 md:px-6 md:py-2"
+            className="bg-primary rounded-[5px] px-6 py-5 font-bold text-white md:px-6 md:py-2"
           >
             LOGO
           </Link>
