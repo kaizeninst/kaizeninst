@@ -53,7 +53,7 @@ export default function Navbar() {
         </div>
 
         {/* Cart + Mobile Toggle */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center">
           <Link href="/cart" className="relative">
             <ShoppingCart className="text-foreground hover:text-primary h-7 w-7 cursor-pointer" />
             {cartCount > 0 && (

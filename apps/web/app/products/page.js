@@ -67,7 +67,7 @@ export default function ProductsPage() {
   );
 
   return (
-    <div className="p-8 md:p-12 lg:p-16">
+    <div className="container mx-auto p-8">
       <div className="flex flex-col gap-8 md:flex-row">
         {/* Sidebar Filters */}
         <aside className="space-y-4 md:w-1/4">
