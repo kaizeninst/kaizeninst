@@ -1,12 +1,12 @@
-export async function GET() {
+// apps/web/app/api/products/route.js
+export async function GET(req) {
   try {
-    const res = await fetch(`${process.env.API_BASE_URL}/api/products`, {
-      cache: "no-store",
-    });
+    const url = new URL(req.url);
+    const qs = url.searchParams.toString(); // forward ทุก query param
+    const backendUrl = `${process.env.API_BASE_URL}/api/products${qs ? `?${qs}` : ""}`;
 
-    if (!res.ok) {
-      return Response.json({ error: "Backend error" }, { status: res.status });
-    }
+    const res = await fetch(backendUrl, { cache: "no-store" });
+    if (!res.ok) return Response.json({ error: "Backend error" }, { status: res.status });
 
     const data = await res.json();
     return Response.json(data);
