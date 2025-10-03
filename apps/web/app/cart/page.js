@@ -1,157 +1,174 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Navbar from "../../components/layout/Navbar";
-import Footer from "../../components/layout/Footer";
 import Image from "next/image";
-import { products } from "../../data/productsdata";
-import { getCart, updateQuantity, removeFromCart } from "../../utils/cart";
 import { Trash2 } from "lucide-react";
+import {
+  getCartDetailed,
+  updateQuantity,
+  removeFromCart,
+  computeTotals,
+  formatTHB,
+} from "@/utils/cart";
 
-const taxRate = 0.07;
+export default function CartPage() {
+  const [items, setItems] = useState([]); // [{ id, name, price, image, quantity }]
 
-const Cart = () => {
-  const [cartItems, setCartItems] = useState([]);
-
-  // Load cart from localStorage on mount
+  // Load cart with latest prices from API + sync on changes
   useEffect(() => {
-    const storedCart = getCart();
-    const restoredItems = storedCart
-      .map((item) => {
-        const product = products.find((p) => p.id === item.id);
-        return product ? { product, quantity: item.quantity } : null;
-      })
-      .filter(Boolean);
-    setCartItems(restoredItems);
+    async function load() {
+      const detailed = await getCartDetailed();
+      setItems(detailed);
+    }
+    load();
+
+    const onChange = () => load();
+    window.addEventListener("cart:change", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("cart:change", onChange);
+      window.removeEventListener("storage", onChange);
+    };
   }, []);
 
-  // Handle quantity change
-  const handleQuantityChange = (id, delta) => {
-    const updated = cartItems.map((item) =>
-      item.product.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
-    );
-    setCartItems(updated);
-
-    // Update localStorage
-    const cartToSave = updated.map((item) => ({
-      id: item.product.id,
-      quantity: item.quantity,
-    }));
-    updateQuantity(id, updated.find((item) => item.product.id === id)?.quantity);
+  // Update quantity (avoid cross-component setState error by deferring side-effects)
+  const handleQty = (id, delta) => {
+    setItems((prev) => {
+      const next = prev.map((it) =>
+        it.id === id ? { ...it, quantity: Math.max(1, (it.quantity || 1) + delta) } : it
+      );
+      const q = next.find((x) => x.id === id)?.quantity || 1;
+      setTimeout(() => updateQuantity(id, q), 0); // defer localStorage + event
+      return next;
+    });
   };
 
+  // Remove line (also defer side-effect)
   const handleRemove = (id) => {
-    const updated = cartItems.filter((item) => item.product.id !== id);
-    setCartItems(updated);
-    removeFromCart(id);
+    setItems((prev) => prev.filter((it) => it.id !== id));
+    setTimeout(() => removeFromCart(id), 0);
   };
 
-  const subtotal = useMemo(
-    () => cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0),
-    [cartItems]
-  );
-
-  const tax = useMemo(() => subtotal * taxRate, [subtotal]);
-  const total = useMemo(() => subtotal + tax, [subtotal]);
+  // Totals
+  const { subtotal, vat, total } = useMemo(() => computeTotals(items), [items]);
 
   return (
-    <div className="space-y-8">
+    <div className="container mx-auto px-4 py-8">
+      {/* Back link */}
       <div className="mb-4">
         <Link href="/products" className="text-red-700 hover:text-red-900 hover:underline">
           &larr; Continue Shopping
         </Link>
       </div>
 
-      <h1 className="text-4xl font-bold">Shopping Cart</h1>
+      <h1 className="mb-6 text-3xl font-bold md:text-4xl">Shopping Cart</h1>
 
-      <div className="flex flex-col gap-8 md:grid md:grid-cols-3">
-        <div className="space-y-6 md:col-span-2">
-          {cartItems.length > 0 ? (
-            cartItems.map((item) => (
-              <div
-                key={item.product.id}
-                className="flex flex-col gap-y-4 rounded-lg border p-4 shadow-sm sm:flex-row sm:items-center sm:gap-x-4"
-              >
-                <Image
-                  src={item.product.image}
-                  alt={item.product.name}
-                  width={96}
-                  height={96}
-                  className="h-24 w-24 rounded-lg object-cover"
-                />
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold">{item.product.name}</h3>
-                  <p className="text-[#A80000]">${item.product.price.toFixed(2)}</p>
-                </div>
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+        {/* Left: items */}
+        <div className="md:col-span-2">
+          {items.length ? (
+            <ul className="space-y-4">
+              {items.map((it) => {
+                const lineTotal = Number(it.price || 0) * Number(it.quantity || 0);
+                return (
+                  <li key={it.id} className="rounded-lg border bg-white p-4 shadow-sm">
+                    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                      {/* Image */}
+                      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-gray-100 sm:h-20 sm:w-20">
+                        {it.image ? (
+                          <Image
+                            src={it.image}
+                            alt={it.name}
+                            width={96}
+                            height={96}
+                            className="h-full w-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <span className="text-xs text-gray-500">No Image</span>
+                        )}
+                      </div>
 
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleQuantityChange(item.product.id, -1)}
-                    className="rounded-full bg-gray-200 px-3 py-1 hover:bg-gray-300"
-                  >
-                    -
-                  </button>
-                  <span className="font-semibold">{item.quantity}</span>
-                  <button
-                    onClick={() => handleQuantityChange(item.product.id, 1)}
-                    className="rounded-full bg-gray-200 px-3 py-1 hover:bg-gray-300"
-                  >
-                    +
-                  </button>
-                </div>
-                <div className="flex items-center justify-end space-x-3 sm:ml-4">
-                  <div className="font-semibold">
-                    ${(item.product.price * item.quantity).toFixed(2)}
-                  </div>
-                  <button
-                    onClick={() => handleRemove(item.product.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            ))
+                      {/* Name + unit price */}
+                      <div className="flex-1">
+                        <div className="font-medium">{it.name}</div>
+                        <div className="text-primary text-sm">{formatTHB(it.price)}</div>
+                      </div>
+
+                      {/* Qty control */}
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleQty(it.id, -1)}
+                          className="rounded-md bg-gray-100 px-3 py-1.5 hover:bg-gray-200"
+                          aria-label="Decrease quantity"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[2ch] text-center font-semibold">{it.quantity}</span>
+                        <button
+                          onClick={() => handleQty(it.id, 1)}
+                          className="rounded-md bg-gray-100 px-3 py-1.5 hover:bg-gray-200"
+                          aria-label="Increase quantity"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Line total + delete */}
+                      <div className="ml-auto flex items-center gap-3">
+                        <div className="whitespace-nowrap font-semibold">
+                          {formatTHB(lineTotal)}
+                        </div>
+                        <button
+                          onClick={() => handleRemove(it.id)}
+                          className="text-primary hover:text-red-800"
+                          aria-label="Remove item"
+                          title="Remove item"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
-            <div className="py-12 text-center text-gray-500">Your cart is empty.</div>
+            <div className="rounded-lg border bg-white p-8 text-center text-gray-500">
+              Your cart is empty.
+            </div>
           )}
         </div>
 
-        <div className="h-fit space-y-4 rounded-lg bg-gray-50 p-6 shadow-md">
-          <h2 className="text-2xl font-bold">Order Summary</h2>
+        {/* Right: order summary */}
+        <aside className="h-fit rounded-lg bg-gray-50 p-6 shadow-md">
+          <h2 className="mb-4 text-2xl font-bold">Order Summary</h2>
+
           <div className="space-y-2 text-gray-700">
-            <div className="flex justify-between">
+            <div className="flex items-center justify-between">
               <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>{formatTHB(subtotal)}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex items-center justify-between">
               <span>Tax</span>
-              <span>${tax.toFixed(2)}</span>
+              <span>{formatTHB(vat)}</span>
             </div>
           </div>
-          <div className="flex justify-between border-t border-gray-300 pt-4 text-lg font-bold">
+
+          <div className="mt-4 flex items-center justify-between border-t pt-4 text-lg font-bold">
             <span>Total</span>
-            <span className="text-[#A90000]">${total.toFixed(2)}</span>
+            <span className="text-primary">{formatTHB(total)}</span>
           </div>
+
           <Link
             href="/quote/contact-form"
-            className="block w-full rounded-lg bg-red-600 px-6 py-3 text-center text-white hover:bg-red-700"
+            className="bg-primary mt-4 block w-full rounded-[5px] py-3 text-center font-semibold text-white transition-colors hover:bg-red-700"
           >
             Proceed to request quote
           </Link>
-        </div>
+        </aside>
       </div>
-    </div>
-  );
-};
-
-export default function CartPage() {
-  return (
-    <div className="flex min-h-screen flex-col">
-      <main className="container mx-auto flex-grow px-4 py-8">
-        <Cart />
-      </main>
     </div>
   );
 }

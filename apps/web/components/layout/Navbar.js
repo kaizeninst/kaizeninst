@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ShoppingCart, Menu, X } from "lucide-react";
 
@@ -9,14 +9,34 @@ export default function Navbar() {
 
   useEffect(() => {
     const updateCartCount = () => {
-      const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
-      const count = storedCart.reduce((acc, item) => acc + item.quantity, 0);
-      setCartCount(count);
+      try {
+        const stored = JSON.parse(localStorage.getItem("cart")) || [];
+        const count = stored.reduce((acc, item) => acc + Number(item?.quantity || 0), 0);
+        setCartCount(count);
+      } catch {
+        setCartCount(0);
+      }
     };
 
-    updateCartCount();
+    // initial
+    // ใช้ rAF ให้แน่ใจว่าไม่ชน render phase อื่น
+    const raf = requestAnimationFrame(updateCartCount);
+
+    // ฟังทั้งอีเวนต์ภายในแท็บ และข้ามแท็บ
+    window.addEventListener("cart:change", updateCartCount);
     window.addEventListener("storage", updateCartCount);
-    return () => window.removeEventListener("storage", updateCartCount);
+
+    // เวลา user กลับมาโฟกัสแท็บ/เปลี่ยนหน้า ให้ sync อีกครั้ง
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) updateCartCount();
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("cart:change", updateCartCount);
+      window.removeEventListener("storage", updateCartCount);
+      document.removeEventListener("visibilitychange", updateCartCount);
+    };
   }, []);
 
   const navLinks = [
@@ -53,7 +73,7 @@ export default function Navbar() {
         </div>
 
         {/* Cart + Mobile Toggle */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
           <Link href="/cart" className="relative">
             <ShoppingCart className="text-foreground hover:text-primary h-7 w-7 cursor-pointer" />
             {cartCount > 0 && (
@@ -62,9 +82,11 @@ export default function Navbar() {
               </span>
             )}
           </Link>
+
           <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            onClick={() => setIsMobileMenuOpen((v) => !v)}
             className="text-foreground hover:text-primary rounded-md p-2 md:hidden"
+            aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
           </button>
