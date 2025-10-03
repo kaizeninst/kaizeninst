@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { products } from "@/data/productsdata";
 import Pagination from "@/components/common/Pagination";
 import Filters from "@/components/products/Filters";
 import ProductCard from "@/components/products/ProductCard";
@@ -11,6 +10,10 @@ export default function ProductsPage() {
   const searchParams = useSearchParams();
   const initialBrand = searchParams.get("brand") || "All";
   const initialCategory = searchParams.get("category") || "All";
+
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBrand, setSelectedBrand] = useState(initialBrand);
@@ -25,12 +28,31 @@ export default function ProductsPage() {
 
   const productsPerPage = 8;
 
-  // โหลด brands & categories
+  // โหลด products ผ่าน proxy API
   useEffect(() => {
-    const allBrands = ["All", ...new Set(products.map((p) => p.brand))];
-    const allCategories = ["All", ...new Set(products.map((p) => p.category))];
-    setBrands(allBrands);
-    setCategories(allCategories);
+    async function fetchProducts() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/products");
+        const data = await res.json();
+
+        if (data?.data) {
+          setProducts(data.data);
+
+          // extract brand / category
+          const allBrands = ["All", ...new Set(data.data.map((p) => p.brand))];
+          const allCategories = ["All", ...new Set(data.data.map((p) => p.category))];
+          setBrands(allBrands);
+          setCategories(allCategories);
+        }
+      } catch (err) {
+        console.error("Failed to load products:", err);
+        setError("Cannot fetch products");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProducts();
   }, []);
 
   // filter & sort
@@ -40,7 +62,7 @@ export default function ProductsPage() {
       const matchesBrand = selectedBrand === "All" || p.brand === selectedBrand;
       const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
       const matchesPrice = p.price >= minPrice && p.price <= maxPrice;
-      const matchesStock = !inStockOnly || p.inStock;
+      const matchesStock = !inStockOnly || p.stock_quantity > 0;
       return matchesSearch && matchesBrand && matchesCategory && matchesPrice && matchesStock;
     })
     .sort((a, b) => {
@@ -102,6 +124,9 @@ export default function ProductsPage() {
 
         {/* Product Section */}
         <main className="md:w-3/4">
+          {loading && <p>Loading products...</p>}
+          {error && <p className="text-red-500">{error}</p>}
+
           {/* Search Bar */}
           <div className="mb-6">
             <div className="relative w-full">
@@ -133,13 +158,13 @@ export default function ProductsPage() {
 
           {/* Product Grid */}
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {currentProducts.length > 0 ? (
-              currentProducts.map((product) => <ProductCard key={product.id} product={product} />)
-            ) : (
-              <p className="text-secondary col-span-full text-center">
-                No products match your filters.
-              </p>
-            )}
+            {!loading && currentProducts.length > 0
+              ? currentProducts.map((product) => <ProductCard key={product.id} product={product} />)
+              : !loading && (
+                  <p className="text-secondary col-span-full text-center">
+                    No products match your filters.
+                  </p>
+                )}
           </div>
 
           {/* Pagination */}
