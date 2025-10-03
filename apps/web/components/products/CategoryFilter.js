@@ -7,7 +7,7 @@ export default function CategoryFilter({ selectedId, onSelect }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // โหลด top-level categories + children
+  // load top-level + children
   useEffect(() => {
     (async () => {
       try {
@@ -40,15 +40,12 @@ export default function CategoryFilter({ selectedId, onSelect }) {
     return (
       <li key={cat.id}>
         <Row active={isSelected}>
-          {/* ซ้าย: กดชื่อเพื่อ "เลือก" แม้เป็น parent */}
+          {/* click label to select even if it's a parent */}
           <button type="button" onClick={() => onSelect?.(cat.id)} className="flex-1 text-left">
-            {cat.name}{" "}
-            {typeof cat.productsCount === "number" && cat.productsCount > 0 && (
-              <span className="ml-1 text-xs text-gray-500">({cat.productsCount})</span>
-            )}
+            {cat.name}
           </button>
 
-          {/* ขวา: ปุ่มพับ/กาง เฉพาะที่มี children */}
+          {/* expand/collapse children */}
           {hasChildren ? (
             <button
               type="button"
@@ -85,7 +82,6 @@ export default function CategoryFilter({ selectedId, onSelect }) {
 
       {!loading && (
         <ul className="space-y-1">
-          {/* ปุ่ม All */}
           <li>
             <button
               type="button"

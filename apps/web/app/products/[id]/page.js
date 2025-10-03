@@ -1,134 +1,213 @@
 "use client";
 import Image from "next/image";
-import Navbar from "../../../components/layout/Navbar";
-import Footer from "../../../components/layout/Footer";
-import React, { useState } from "react";
 import Link from "next/link";
-import { products } from "../../../data/productsdata";
+import React, { useEffect, useMemo, useState } from "react";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function ProductDetailPage({ params }) {
-  const { id } = React.use(params);
-  const [quantity, setQuantity] = useState(1);
+  const { id } = params;
+  const [product, setProduct] = useState(null);
+  const [quantity, setQuantity] = useState(5);
   const [showPopup, setShowPopup] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const product = products.find((p) => p.id === id);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/products/${id}`, { cache: "no-store" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Failed to fetch product");
+        const p = json?.data || json;
+        if (mounted) setProduct(p || null);
+      } catch (err) {
+        console.error("Load product error:", err);
+        if (mounted) setError("Cannot load product");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => (mounted = false);
+  }, [id]);
 
-  const handleQuantityChange = (change) => {
-    setQuantity((prevQuantity) => Math.max(1, prevQuantity + change));
-  };
+  const handleQuantityChange = (d) => setQuantity((prev) => Math.max(1, prev + d));
+
+  const priceText = useMemo(() => {
+    if (!product) return "";
+    const value = Number(product.price || 0);
+    return new Intl.NumberFormat("th-TH", {
+      style: "currency",
+      currency: "THB",
+      maximumFractionDigits: 2,
+    }).format(value);
+  }, [product]);
+
+  const imageSrc = product?.image_path || "";
+  const brandText = product?.brand || product?.Category?.name || "ABC Company";
+
+  // breadcrumb items (ใส่ descendants=1 ตอนลิงก์กลับไป list)
+  function buildBreadcrumbItems(p) {
+    const items = [{ label: "Products", href: "/products" }];
+    const trail = buildCategoryTrail(p?.Category);
+    trail.forEach((cat) =>
+      items.push({ label: cat.name, href: `/products?category_id=${cat.id}&descendants=1` })
+    );
+    items.push({ label: p?.name });
+    return items;
+  }
+  function buildCategoryTrail(cat) {
+    const trail = [];
+    let cur = cat;
+    while (cur) {
+      trail.unshift(cur);
+      cur = cur.parent || cur.Parent || null;
+    }
+    return trail;
+  }
 
   const handleAddToCart = () => {
-    const storedCart = JSON.parse(localStorage.getItem("cart")) || [];
-    const existing = storedCart.find((item) => item.id === product.id);
-
-    if (existing) {
-      existing.quantity += quantity;
-    } else {
-      storedCart.push({ id: product.id, quantity });
-    }
-
-    localStorage.setItem("cart", JSON.stringify(storedCart));
-    window.dispatchEvent(new Event("storage")); // update navbar
-
+    if (!product) return;
+    const stored = JSON.parse(localStorage.getItem("cart") || "[]");
+    const exist = stored.find((i) => i.id === product.id);
+    if (exist) exist.quantity += quantity;
+    else
+      stored.push({
+        id: product.id,
+        name: product.name,
+        image: product.image_path,
+        price: Number(product.price || 0),
+        quantity,
+      });
+    localStorage.setItem("cart", JSON.stringify(stored));
+    window.dispatchEvent(new Event("storage"));
     setShowPopup(true);
     setTimeout(() => setShowPopup(false), 3000);
   };
 
-  if (!product) {
-    return <h1>Product Not Found</h1>;
-  }
-
-  return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <div className="p-8 md:p-12 lg:p-12">
-        <div className="mb-2 text-sm">
-          <Link href="/products" className="text-[#f80000] hover:text-[#A80000] hover:underline">
+  if (loading)
+    return <div className="container mx-auto min-h-screen p-8 md:p-12">Loading product...</div>;
+  if (error || !product) {
+    return (
+      <div className="container mx-auto min-h-screen p-8 md:p-12">
+        <h1 className="text-xl font-semibold text-red-600">Product Not Found</h1>
+        <div className="mt-2">
+          <Link href="/products" className="text-red-600 hover:text-red-700 hover:underline">
             ← Continue view Products
           </Link>
         </div>
-        <div className="space-y-8">
-          {/* Breadcrumbs */}
-          <div className="flex items-center space-x-2 text-gray-500">
-            <Link href="/products" className="hover:underline">
-              Products
-            </Link>
-            <span>&gt;</span>
-            <span className="font-semibold text-gray-800">{product.name}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto min-h-screen p-8 md:p-12">
+      <div className="mb-2 text-sm">
+        <Link href="/products" className="text-red-600 hover:text-red-700 hover:underline">
+          ← Continue view Products
+        </Link>
+      </div>
+
+      <div className="space-y-8">
+        <Breadcrumb items={buildBreadcrumbItems(product)} />
+
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+          <div className="flex items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+            {imageSrc ? (
+              <Image
+                src={imageSrc}
+                alt={product.name}
+                width={550}
+                height={550}
+                className="h-[420px] w-[420px] object-cover md:h-[520px] md:w-[520px]"
+                unoptimized
+              />
+            ) : (
+              <div className="flex h-[420px] w-[420px] items-center justify-center text-gray-400 md:h-[520px] md:w-[520px]">
+                <span className="text-center text-xl">Product Image</span>
+              </div>
+            )}
           </div>
 
-          {/* Main Info */}
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="flex justify-center overflow-hidden rounded-lg shadow-lg">
-              <Image
-                src={product.image}
-                alt={product.name}
-                width={480}
-                height={480}
-                className="h-[480px] w-[480px] object-cover"
-              />
-            </div>
-            <div className="space-y-6">
-              <h1 className="text-4xl font-bold">{product.name}</h1>
-              <p className="text-md text-gray-600">{product.brand}</p>
-              <h2 className="text-2xl font-bold text-black">{product.price}$</h2>
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold md:text-4xl">{product.name}</h1>
+            <p className="text-gray-600">{brandText}</p>
+            <div className="text-2xl font-bold text-black">{priceText}</div>
 
-              {/* Quantity + Add to Cart */}
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center overflow-hidden rounded-lg border">
-                  <button
-                    onClick={() => handleQuantityChange(-1)}
-                    className="bg-gray-100 px-4 py-2 hover:bg-gray-200"
-                  >
-                    -
-                  </button>
-                  <span className="w-12 border-x px-4 py-2 text-center">{quantity}</span>
-                  <button
-                    onClick={() => handleQuantityChange(1)}
-                    className="bg-gray-100 px-4 py-2 hover:bg-gray-200"
-                  >
-                    +
-                  </button>
+            <div className="flex w-full flex-col gap-3 sm:max-w-sm">
+              <div className="flex items-stretch overflow-hidden rounded-md border">
+                <button
+                  onClick={() => handleQuantityChange(-1)}
+                  className="px-5 py-2 text-lg hover:bg-gray-100"
+                  aria-label="Decrease quantity"
+                >
+                  −
+                </button>
+                <div className="flex w-full items-center justify-center border-x px-6 py-2 text-lg">
+                  {quantity}
                 </div>
                 <button
-                  onClick={handleAddToCart}
-                  className="rounded-lg bg-red-600 px-6 py-2 text-white shadow hover:bg-red-700"
+                  onClick={() => handleQuantityChange(1)}
+                  className="px-5 py-2 text-lg hover:bg-gray-100"
+                  aria-label="Increase quantity"
                 >
-                  ADD TO CART
+                  +
                 </button>
               </div>
-            </div>
-          </div>
-
-          {/* Datasheet + Info + Specs */}
-          <div className="space-y-6 md:col-span-2">
-            <button className="rounded-lg border border-red-600 px-6 py-2 text-red-600 hover:bg-red-50">
-              Download Datasheet
-            </button>
-
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Product Information</h2>
-              <p className="text-gray-700">{product.description}</p>
-
-              <h2 className="text-2xl font-bold">Specifications</h2>
-              <ul className="list-inside list-disc space-y-1 text-gray-700">
-                {product.specifications &&
-                  Object.entries(product.specifications).map(([key, value]) => (
-                    <li key={key}>
-                      {key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())}:{" "}
-                      {value}
-                    </li>
-                  ))}
-              </ul>
+              <button
+                onClick={handleAddToCart}
+                className="w-full rounded-md bg-red-600 py-3 font-semibold tracking-wide text-white transition-colors hover:bg-red-700"
+              >
+                ADD TO CART
+              </button>
             </div>
           </div>
         </div>
-      </div>
-      <Footer />
 
-      {/* Popup */}
+        <div className="space-y-6 md:col-span-2">
+          <div>
+            {product.manual_file_path ? (
+              <a
+                href={product.manual_file_path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-800"
+              >
+                Download <span className="text-red-600 underline">Datasheet</span>
+              </a>
+            ) : (
+              <span className="cursor-not-allowed text-gray-400">
+                Download <span className="underline">Datasheet</span>
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-2xl font-bold">Product Information</h2>
+            <p className="leading-7 text-gray-700">
+              {product.description || "No additional information is available for this product."}
+            </p>
+          </div>
+
+          {product.specifications && typeof product.specifications === "object" ? (
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold">Specifications</h2>
+              <ul className="list-inside list-disc space-y-1 text-gray-700">
+                {Object.entries(product.specifications).map(([k, v]) => (
+                  <li key={k}>
+                    {k.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}:{" "}
+                    {String(v)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
       {showPopup && (
-        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-500 px-6 py-3 text-white shadow-xl">
+        <div className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-600 px-6 py-3 text-white shadow-xl">
           Added {quantity} of {product?.name} to cart!
         </div>
       )}

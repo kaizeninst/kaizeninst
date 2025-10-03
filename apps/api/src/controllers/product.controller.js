@@ -1,5 +1,7 @@
 import models from "../models/index.js";
 import { Op } from "sequelize";
+import { getSelfAndDescendantIds } from "../utils/categoryTree.js";
+
 const { Product, Category } = models;
 
 // ✅ CREATE
@@ -41,17 +43,31 @@ export const createProduct = async (req, res) => {
   }
 };
 
-// ✅ READ ALL (with filters + pagination)
+// READ ALL (filters + pagination + descendants)
 export const getAllProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 12;
     const offset = (page - 1) * limit;
+
     const { status, search, category_id } = req.query;
+    const includeDesc = ["1", "true", "yes"].includes(
+      String(req.query.descendants || "").toLowerCase()
+    );
 
     const where = {};
     if (status) where.status = status;
-    if (category_id) where.category_id = category_id;
+
+    if (category_id) {
+      const cid = Number(category_id);
+      if (includeDesc) {
+        const ids = await getSelfAndDescendantIds(cid);
+        where.category_id = { [Op.in]: ids.length ? ids : [cid] };
+      } else {
+        where.category_id = cid;
+      }
+    }
+
     if (search) {
       where[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
@@ -65,17 +81,12 @@ export const getAllProducts = async (req, res) => {
       offset,
       limit,
       order: [["created_at", "DESC"]],
-      include: [{ model: Category, attributes: ["id", "name", "slug"] }],
+      include: [{ model: Category, attributes: ["id", "name", "slug", "parent_id"] }],
     });
 
     res.json({
       data: rows,
-      pagination: {
-        total: count,
-        page,
-        limit,
-        totalPages: Math.ceil(count / limit),
-      },
+      pagination: { total: count, page, limit, totalPages: Math.ceil(count / limit) },
     });
   } catch (err) {
     console.error("GET /products error:", err);

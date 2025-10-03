@@ -11,12 +11,12 @@ export default function ProductsPage() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // query states (sync กับ URL)
+  // query states
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [selectedCategoryId, setSelectedCategoryId] = useState(
     searchParams.get("category_id") ? Number(searchParams.get("category_id")) : "All"
   );
-  const [status, setStatus] = useState(searchParams.get("status") || ""); // optional
+  const [status, setStatus] = useState(searchParams.get("status") || "");
   const [page, setPage] = useState(Number(searchParams.get("page") || 1));
   const [limit, setLimit] = useState(Number(searchParams.get("limit") || 12));
 
@@ -26,15 +26,12 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // helper: push query
   const pushQuery = (patch) => {
     const qs = new URLSearchParams(searchParams.toString());
     Object.entries(patch).forEach(([k, v]) => {
       if (v === undefined || v === null || v === "" || v === "All") qs.delete(k);
       else qs.set(k, String(v));
     });
-
-    // reset page เมื่อ filter เปลี่ยน
     if (
       patch.search !== undefined ||
       patch.category_id !== undefined ||
@@ -43,11 +40,10 @@ export default function ProductsPage() {
     ) {
       qs.delete("page");
     }
-
     router.push(`${pathname}?${qs.toString()}`, { scroll: false });
   };
 
-  // sync state เมื่อ URL เปลี่ยน
+  // sync states when URL changes
   useEffect(() => {
     setSearchTerm(searchParams.get("search") || "");
     setSelectedCategoryId(
@@ -59,7 +55,7 @@ export default function ProductsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams?.toString()]);
 
-  // fetch จาก proxy ด้วย server-side filters + pagination
+  // fetch with server filters + pagination
   useEffect(() => {
     (async () => {
       try {
@@ -71,12 +67,11 @@ export default function ProductsPage() {
         if (status) qs.set("status", status);
         if (selectedCategoryId !== "All" && !Number.isNaN(Number(selectedCategoryId))) {
           qs.set("category_id", String(selectedCategoryId));
+          qs.set("descendants", "1"); // ✅ show parent + all children
         }
-
         const res = await fetch(`/api/products?${qs.toString()}`, { cache: "no-store" });
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || "Fetch products failed");
-
         setItems(json?.data || []);
         setPagination(json?.pagination || { total: 0, page: 1, limit, totalPages: 1 });
       } catch (err) {
@@ -88,7 +83,6 @@ export default function ProductsPage() {
     })();
   }, [page, limit, searchTerm, status, selectedCategoryId]);
 
-  // ถ้ายังอยากมี sort ฝั่ง client (ชั่วคราว เฉพาะหน้า current page)
   const pageItems = useMemo(() => items, [items]);
 
   return (
@@ -100,11 +94,12 @@ export default function ProductsPage() {
             selectedId={selectedCategoryId}
             onSelect={(id) => {
               setSelectedCategoryId(id);
-              pushQuery({ category_id: id });
+              // ✅ always put descendants=1 when choosing a category
+              pushQuery({ category_id: id, descendants: 1 });
             }}
           />
 
-          {/* Status filter (optional) */}
+          {/* Status */}
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
             <select
@@ -177,7 +172,6 @@ export default function ProductsPage() {
           {/* Grid */}
           {loading && <p>Loading products...</p>}
           {error && <p className="text-red-500">{error}</p>}
-
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {!loading && pageItems.length > 0
               ? pageItems.map((p) => <ProductCard key={p.id} product={p} />)
