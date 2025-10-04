@@ -109,35 +109,42 @@ export default function RequestQuotePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // very light validation
     if (!formData.fullName || !formData.phoneNumber || !formData.emailAddress) return;
 
     setSubmitting(true);
     try {
-      // TODO: ส่งเข้า backend จริงของคุณที่นี่ (เช่น POST /api/quotes)
-      // await fetch("/api/quotes", {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     contact: {
-      //       fullName: formData.fullName,
-      //       companyName: formData.companyName,
-      //       phone: formData.phoneNumber,
-      //       email: formData.emailAddress,
-      //       note: formData.note,
-      //     },
-      //     items,
-      //     totals: { subtotal, vat, total },
-      //   }),
-      // });
+      // แปลงสินค้าในตะกร้าเป็น QuoteItems
+      const QuoteItems = items.map((it) => ({
+        product_id: it.id,
+        quantity: Number(it.quantity || 1),
+      }));
 
-      // demo delay
-      await new Promise((r) => setTimeout(r, 600));
+      const payload = {
+        customer_name: formData.fullName,
+        customer_email: formData.emailAddress,
+        company_name: formData.companyName || null,
+        customer_phone: formData.phoneNumber,
+        notes: formData.note || null,
+        QuoteItems,
+      };
+
+      const res = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || "Submit failed");
+      }
+
+      // success → ไปหน้าสำเร็จ (หรือล้างตะกร้า)
+      // clearCart();
       router.push("/quote/success");
     } catch (err) {
       console.error(err);
-      alert("Failed to submit quote request.");
+      alert(err.message || "Failed to submit quote request.");
     } finally {
       setSubmitting(false);
     }
