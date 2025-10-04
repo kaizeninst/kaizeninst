@@ -6,6 +6,7 @@ import {
   updateProduct,
   deleteProduct,
   toggleProductStatus,
+  getProductsBulk,
 } from "../controllers/product.controller.js";
 import { maybeAuth } from "../middleware/maybeAuth.js";
 
@@ -13,6 +14,8 @@ const router = express.Router();
 
 // Public
 router.get("/", getAllProducts);
+router.post("/bulk", getProductsBulk);
+
 router.get("/:id", getProductById);
 
 // Protected

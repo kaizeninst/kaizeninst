@@ -43,7 +43,7 @@ export const createProduct = async (req, res) => {
   }
 };
 
-// READ ALL (filters + pagination + descendants)
+// ✅ READ ALL (filters + pagination + descendants)
 export const getAllProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -103,6 +103,25 @@ export const getProductById = async (req, res) => {
     if (!product) return res.status(404).json({ error: "Product not found" });
     res.json(product);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ BULK (POST /api/products/bulk  { ids: [1,2,3] })
+export const getProductsBulk = async (req, res) => {
+  try {
+    const ids = (req.body?.ids || []).map(Number).filter(Boolean);
+    if (!ids.length) return res.json({ data: [] });
+
+    const rows = await Product.findAll({
+      where: { id: ids },
+      include: [{ model: Category, attributes: ["id", "name", "slug"] }],
+      order: [["id", "ASC"]],
+    });
+
+    res.json({ data: rows });
+  } catch (err) {
+    console.error("POST /products/bulk error:", err);
     res.status(500).json({ error: err.message });
   }
 };

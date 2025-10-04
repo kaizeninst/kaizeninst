@@ -15,11 +15,19 @@ import staffRoutes from "./routes/staff.js";
 
 const app = express();
 
-// Security headers
-app.use(helmet());
+// If running behind a proxy/load balancer (Nginx, Cloudflare, Vercel, etc.)
+app.set("trust proxy", 1);
 
-// Parse JSON body
-app.use(express.json());
+// Security headers (tweak to play well with CORS)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// Body parsers
+app.use(express.json({ limit: "1mb" })); // parse JSON with a safe limit
+app.use(express.urlencoded({ extended: true, limit: "1mb" })); // parse HTML form bodies
 
 // Parse cookies (for httpOnly JWT cookie)
 app.use(cookieParser());
@@ -27,7 +35,7 @@ app.use(cookieParser());
 // CORS
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:3000"],
     credentials: true,
   })
 );
@@ -42,17 +50,38 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-// Routes
+// API routes
 app.use("/api/auth", authRoute);
 app.use("/api/categories", categoryRoutes);
-app.use("/api/products", productRoutes);
+app.use("/api/products", productRoutes); // includes GET /, GET /:id, POST /bulk, etc.
 app.use("/api/orders", orderRoutes);
 app.use("/api/quotes", quoteRoutes);
 app.use("/api/staff", staffRoutes);
 
+// 404 for unknown routes
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "Not found" });
+  }
+  next();
+});
+
+// Handle invalid JSON body (e.g., malformed JSON)
+app.use((err, _req, res, next) => {
+  if (err?.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "Invalid JSON" });
+  }
+  // generic error fallback
+  if (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+  next();
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, async () => {
   await testConnection();
-  await sequelize.sync(); // sync model กับ table
+  await sequelize.sync(); // ensure models are in sync
   console.log(`🚀 API listening on http://localhost:${PORT}`);
 });
