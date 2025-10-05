@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, Edit, Trash } from "lucide-react";
 import Link from "next/link";
-import { ProductRow } from "../../../components/admin/products";
+import { useRouter } from "next/navigation";
+import { Plus, Search, Edit, Trash } from "lucide-react";
 
 export default function ProductsPage() {
+  const router = useRouter();
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [pagination, setPagination] = useState({
@@ -20,12 +23,13 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // ✅ debounce search
+  // debounce ค้นหา 300ms
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
+  // โหลดรายการสินค้า
   const fetchProducts = async (p = page, s = debouncedSearch) => {
     setLoading(true);
     try {
@@ -45,8 +49,10 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts(1, debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
+  // สลับการแสดงราคา
   const handleToggleShowPrice = async (product) => {
     try {
       const res = await fetch(`/api/products/${product.id}`, {
@@ -65,6 +71,7 @@ export default function ProductsPage() {
     }
   };
 
+  // ลบสินค้า
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     try {
@@ -77,14 +84,18 @@ export default function ProductsPage() {
     }
   };
 
+  // helper
+  const formatTHB = (n) =>
+    Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
     <div className="p-6">
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Products Management</h1>
-          <p className="text-sm text-gray-500">Manage your store&apos;s products</p>
         </div>
+
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {/* Search */}
           <div className="relative">
@@ -98,7 +109,7 @@ export default function ProductsPage() {
             />
           </div>
 
-          {/* ✅ เปลี่ยนจากเปิด Modal → ไปที่หน้า Create */}
+          {/* ไปหน้าสร้างสินค้า */}
           <Link
             href="/admin/products/create"
             className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
@@ -130,16 +141,82 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {products.map((p) => (
-                  <ProductRow
-                    key={p.id}
-                    product={p}
-                    onToggleShowPrice={handleToggleShowPrice}
-                    // ✅ เปลี่ยนจากเปิด Modal → ไปที่หน้า Edit
-                    onEdit={() => (window.location.href = `/admin/products/${p.id}/edit`)}
-                    onDelete={handleDelete}
-                  />
-                ))}
+                {products.map((p) => {
+                  const isOutOfStock = p.stock_quantity === 0 || p.status !== "active";
+                  const imgSrc =
+                    p.image_path && p.image_path.trim() !== ""
+                      ? p.image_path
+                      : "/images/placeholder.png";
+                  return (
+                    <tr key={p.id} className="border-t hover:bg-gray-50">
+                      {/* Image */}
+                      <td className="px-4 py-2">
+                        <img
+                          src={imgSrc}
+                          alt={p.name}
+                          className="h-10 w-10 rounded border object-cover"
+                          loading="lazy"
+                        />
+                      </td>
+
+                      {/* Name */}
+                      <td className="px-4 py-2 font-medium">{p.name}</td>
+
+                      {/* Category */}
+                      <td className="px-4 py-2 text-gray-600">{p.Category?.name || "-"}</td>
+
+                      {/* Price */}
+                      <td className="px-4 py-2 font-semibold text-red-600">
+                        THB {formatTHB(p.price)}
+                      </td>
+
+                      {/* Show Price toggle */}
+                      <td className="px-4 py-2 text-left">
+                        <label className="relative inline-flex cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={!p.hide_price}
+                            onChange={() => handleToggleShowPrice(p)}
+                          />
+                          <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-red-600 peer-checked:after:translate-x-full"></div>
+                        </label>
+                      </td>
+
+                      {/* Stock */}
+                      <td className="px-4 py-2">{p.stock_quantity}</td>
+
+                      {/* Status */}
+                      <td className="px-4 py-2">
+                        <span
+                          className={`rounded px-3 py-1 text-xs font-semibold ${
+                            isOutOfStock ? "bg-red-500 text-white" : "bg-black text-white"
+                          }`}
+                        >
+                          {isOutOfStock ? "Out of Stock" : "In Stock"}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-2">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => router.push(`/admin/products/${p.id}/edit`)}
+                            className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+                          >
+                            <Edit className="h-4 w-4 text-blue-600" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(p.id)}
+                            className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+                          >
+                            <Trash className="h-4 w-4 text-red-600" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
