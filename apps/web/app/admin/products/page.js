@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Search, Edit, Trash } from "lucide-react";
 import Link from "next/link";
-import { ProductRow } from "../../../../components/admin/products";
+import { ProductRow } from "../../../components/admin/products";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);

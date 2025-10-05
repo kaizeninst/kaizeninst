@@ -1,7 +1,4 @@
 "use client";
-
-import Navbar from "../../components/layout/Navbar";
-import Footer from "../../components/layout/Footer";
 import Image from "next/image";
 import { Goal, Heart, UsersRound, Award } from "lucide-react";
 

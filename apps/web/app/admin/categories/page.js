@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { CategoryRow, CategoryModal } from "../../../../components/categories";
+import { CategoryRow, CategoryModal } from "../../../components/categories";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);

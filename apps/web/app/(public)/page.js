@@ -1,10 +1,10 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import Navbar from "../components/layout/Navbar";
-import Footer from "../components/layout/Footer";
+import Navbar from "../../components/layout/Navbar";
+import Footer from "../../components/layout/Footer";
 import React, { useState, useEffect } from "react";
-import { products } from "../data/productsdata";
+import { products } from "../../data/productsdata";
 import { MoveLeft, MoveRight } from "lucide-react";
 
 const uniqueBrands = [...new Set(products.map((p) => p.brand))];
