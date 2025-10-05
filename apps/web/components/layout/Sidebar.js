@@ -32,7 +32,7 @@ export default function Sidebar() {
         method: "POST",
         credentials: "include",
       });
-      if (res.ok) router.replace("/admin/login");
+      if (res.ok) router.replace("/admin-login");
     } catch {
       // noop
     }
