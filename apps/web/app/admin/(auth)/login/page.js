@@ -1,48 +1,66 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "/admin/dashboard";
+
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("Admin!234");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  async function safeJson(res) {
+    const text = await res.text();
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return {};
+    }
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
+    if (submitting) return;
+
     setError("");
     setSubmitting(true);
+
     try {
-      const res = await fetch("/api/auth/login", {
+      // login via same-origin proxy
+      const loginRes = await fetch("/api/admin/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        cache: "no-store",
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        setError(data?.error || "Login failed");
+      const loginData = await safeJson(loginRes);
+      if (!loginRes.ok) {
+        setError(loginData?.error || "Login failed");
         setSubmitting(false);
         return;
       }
 
-      const me = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" })
-        .then((r) => r.json())
-        .catch(() => ({}));
+      // verify cookie/session via proxy
+      const meRes = await fetch("/api/admin/auth/me", { cache: "no-store" });
+      const me = await safeJson(meRes);
 
-      if (!me?.authenticated) {
-        setError("Cookie not set. Check CORS/cookie options.");
+      if (!meRes.ok || !me?.authenticated) {
+        setError("Cookie not set or unauthorized. Check CORS/cookie options.");
         setSubmitting(false);
         return;
       }
 
-      setSubmitting(false);
-      router.replace("/admin/dashboard");
+      // success
+      router.replace(nextPath);
     } catch (err) {
+      console.error("Admin login error:", err);
       setError("Network error. Please try again.");
+    } finally {
       setSubmitting(false);
     }
   }
@@ -62,7 +80,6 @@ export default function AdminLoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-300"
-                placeholder=""
                 required
               />
             </div>
@@ -75,12 +92,15 @@ export default function AdminLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
                 className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-300"
-                placeholder=""
                 required
               />
             </div>
 
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+            {error ? (
+              <p className="text-sm text-red-600" role="alert">
+                {error}
+              </p>
+            ) : null}
 
             <button
               type="submit"
