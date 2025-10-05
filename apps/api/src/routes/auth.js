@@ -68,7 +68,8 @@ router.get("/me", (req, res) => {
 // POST /api/auth/logout
 router.post("/logout", (req, res) => {
   res.clearCookie("accessToken");
-  return res.json({ message: "Logged out" });
+  res.setHeader("Content-Type", "application/json");
+  return res.status(200).json({ message: "Logged out" });
 });
 
 export default router;
