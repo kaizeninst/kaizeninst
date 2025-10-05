@@ -94,6 +94,7 @@ export default function ProductsPage() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Products Management</h1>
+          <p className="text-gray-400">Manage your store’s products</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
