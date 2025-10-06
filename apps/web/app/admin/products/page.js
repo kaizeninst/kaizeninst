@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Search, Edit, Trash } from "lucide-react";
 import Image from "next/image";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import Pagination from "@/components/common/Pagination";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -251,52 +252,11 @@ export default function ProductsPage() {
           </div>
 
           {/* Pagination */}
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-center text-sm text-gray-600 sm:text-left">
-              Showing {(pagination.page - 1) * pagination.limit + 1}–
-              {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
-            </p>
-
-            <div className="flex flex-wrap justify-center gap-2">
-              <button
-                disabled={pagination.page === 1}
-                onClick={() => fetchProducts(page - 1, debouncedSearch)}
-                className={`rounded border px-3 py-1 text-sm ${
-                  pagination.page === 1
-                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-primary text-white hover:bg-red-700"
-                }`}
-              >
-                Previous
-              </button>
-
-              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pnum) => (
-                <button
-                  key={pnum}
-                  onClick={() => fetchProducts(pnum, debouncedSearch)}
-                  className={`rounded border px-3 py-1 text-sm ${
-                    page === pnum
-                      ? "bg-primary text-white"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {pnum}
-                </button>
-              ))}
-
-              <button
-                disabled={pagination.page === pagination.totalPages}
-                onClick={() => fetchProducts(page + 1, debouncedSearch)}
-                className={`rounded border px-3 py-1 text-sm ${
-                  pagination.page === pagination.totalPages
-                    ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-primary text-white hover:bg-red-700"
-                }`}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pagination
+            pagination={pagination}
+            page={page}
+            onPageChange={(newPage) => fetchProducts(newPage, debouncedSearch)}
+          />
         </>
       )}
     </div>
