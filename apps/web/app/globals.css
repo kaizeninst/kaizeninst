@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
-/* กำหนดค่า base (light mode) */
+/* ---------------------------------------------------------- */
+/* 🎨 THEME VARIABLES                                         */
+/* ---------------------------------------------------------- */
+
+/* Light mode (default) */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -9,7 +13,7 @@
   --accent: #ffb703;
 }
 
-/* map ตัวแปรเหล่านี้ไปเป็น utilities ของ Tailwind */
+/* Map ตัวแปรเหล่านี้ให้ Tailwind ใช้ผ่าน @theme inline */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -20,19 +24,50 @@
   --font-sans: var(--font-inter);
 }
 
-/* dark mode */
+/* ---------------------------------------------------------- */
+/* 🌙 DARK MODE                                               */
+/* ---------------------------------------------------------- */
+
 .dark {
   :root {
     --background: #0a0a0a;
     --foreground: #f0f0f0;
+    --primary: #ff5555;
+    --secondary: #bbbbbb;
+    --accent: #ffd166;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  .table-container {
+    @apply border-neutral-800 bg-neutral-900;
+  }
+
+  .table thead {
+    @apply bg-neutral-800 text-neutral-300;
+  }
+
+  .table tbody tr {
+    @apply border-neutral-800 hover:bg-neutral-800/70;
+  }
+
+  .table td,
+  .table th {
+    @apply text-neutral-200;
   }
 }
 
-/* base style */
+/* ---------------------------------------------------------- */
+/* 🧱 BASE STYLE                                              */
+/* ---------------------------------------------------------- */
+
 body {
-  @apply bg-background text-foreground font-sans antialiased;
+  @apply bg-background text-foreground font-sans antialiased transition-colors duration-300;
 }
 
+/* Animation for sidebar slide-in */
 @keyframes slideIn {
   from {
     transform: translateX(-100%);
@@ -48,12 +83,12 @@ body {
   animation: slideIn 0.3s ease-out forwards;
 }
 
-/* --------------------------------------------- */
-/* Reusable Table Styles                         */
-/* --------------------------------------------- */
+/* ---------------------------------------------------------- */
+/* 🧾 TABLE STYLES (Reusable)                                 */
+/* ---------------------------------------------------------- */
 
 .table-container {
-  @apply overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm;
+  @apply w-full overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm;
 }
 
 .table {
@@ -65,23 +100,86 @@ body {
 }
 
 .table th {
-  @apply px-4 py-2 text-left font-medium;
+  @apply whitespace-nowrap px-4 py-2 text-left font-medium;
 }
 
 .table tbody tr {
-  @apply border-t hover:bg-gray-50;
+  @apply border-t transition-colors duration-150 hover:bg-gray-50;
 }
 
 .table td {
   @apply px-4 py-2 align-middle;
 }
 
-/* For toggle column alignment */
+/* Toggle alignment */
 .table-toggle {
   @apply px-4 py-2 text-left;
 }
 
-/* For action buttons column */
+/* Action buttons column */
 .table-actions {
   @apply px-4 py-2;
+}
+
+/* ---------------------------------------------------------- */
+/* 📱 RESPONSIVE ENHANCEMENTS                                 */
+/* ---------------------------------------------------------- */
+
+/* ✅ Tablet and below */
+@media (max-width: 768px) {
+  .table-container {
+    @apply overflow-x-auto border-none shadow-none;
+  }
+
+  .table {
+    @apply min-w-[700px]; /* ป้องกันคอลัมน์บีบเกินไป */
+  }
+
+  .table th,
+  .table td {
+    @apply px-2 py-1 text-xs;
+  }
+
+  /* ซ่อนบางคอลัมน์ในมือถือ เช่น Category, Stock */
+  .table th:nth-child(3),
+  .table td:nth-child(3),
+  .table th:nth-child(6),
+  .table td:nth-child(6) {
+    display: none;
+  }
+}
+
+/* ✅ Small screens (mobile <480px) */
+@media (max-width: 480px) {
+  body {
+    @apply text-[13px];
+  }
+
+  .table-container {
+    @apply rounded-md;
+  }
+
+  .table th,
+  .table td {
+    @apply px-1.5 py-1 text-[12px];
+  }
+}
+
+/* ✅ Responsive Header (Search + Add Button Layout) */
+@media (max-width: 640px) {
+  .admin-header {
+    @apply flex flex-col gap-3;
+  }
+
+  .admin-header h1 {
+    @apply text-lg;
+  }
+
+  .admin-header input {
+    @apply w-full;
+  }
+
+  .admin-header .add-btn {
+    @apply w-full justify-center;
+  }
 }

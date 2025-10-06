@@ -110,12 +110,12 @@ export default function ProductsPage() {
     });
 
   return (
-    <div className="p-6">
+    <div className="w-full p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="admin-header mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Products Management</h1>
-          <p className="text-gray-400">Manage your store’s products</p>
+          <h1 className="text-foreground text-2xl font-semibold">Products Management</h1>
+          <p className="text-secondary text-sm">Manage your store’s products</p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -127,14 +127,14 @@ export default function ProductsPage() {
               placeholder="Search Products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:border-red-500 focus:ring focus:ring-red-200 sm:w-64"
+              className="focus:border-primary w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:ring focus:ring-red-200 sm:w-64"
             />
           </div>
 
           {/* Add Product */}
           <Link
             href="/admin/products/create"
-            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
+            className="add-btn bg-primary flex items-center gap-2 rounded-lg px-4 py-2 text-white shadow transition hover:bg-red-700"
           >
             <Plus className="h-4 w-4" /> Add Product
           </Link>
@@ -148,7 +148,7 @@ export default function ProductsPage() {
         <p className="text-gray-500">No products found.</p>
       ) : (
         <>
-          <div className="table-container">
+          <div className="table-container w-full">
             <table className="table">
               <thead>
                 <tr>
@@ -162,119 +162,103 @@ export default function ProductsPage() {
                   <th>Action</th>
                 </tr>
               </thead>
-
               <tbody>
-                {products.map((p) => {
-                  const imgSrc =
-                    p.image_path && p.image_path.trim() !== ""
-                      ? p.image_path.startsWith("http")
-                        ? p.image_path // external / GCS
-                        : p.image_path.startsWith("/uploads")
-                          ? p.image_path // local served by Express
-                          : `/uploads/${p.image_path}` // fallback
-                      : "/images/placeholder.png"; // no image
+                {products.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      <div className="relative mx-auto h-10 w-10 overflow-hidden rounded border bg-gray-100 sm:mx-0">
+                        <Image
+                          src={
+                            p.image_path && p.image_path.trim() !== ""
+                              ? p.image_path.startsWith("http")
+                                ? p.image_path
+                                : p.image_path.startsWith("/uploads")
+                                  ? p.image_path
+                                  : `/uploads/${p.image_path}`
+                              : "/images/placeholder.png"
+                          }
+                          alt={p.name || "Product image"}
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    </td>
 
-                  return (
-                    <tr key={p.id}>
-                      {/* Product Image */}
-                      <td className="table-cell">
-                        <div className="relative h-10 w-10 overflow-hidden rounded border bg-gray-100">
-                          <Image
-                            src={
-                              p.image_path && p.image_path.trim() !== ""
-                                ? p.image_path.startsWith("http")
-                                  ? p.image_path // External (GCS or CDN)
-                                  : p.image_path.startsWith("/uploads")
-                                    ? p.image_path // Local (served by Express)
-                                    : `/uploads/${p.image_path}` // Fallback
-                                : "/images/placeholder.png" // No image
-                            }
-                            alt={p.name || "Product image"}
-                            fill
-                            sizes="40px"
-                            className="object-cover"
-                            unoptimized // ให้โหลดได้แม้เป็น external URL
-                            onError={(e) => {
-                              e.target.src = "/images/placeholder.png";
-                            }}
-                          />
-                        </div>
-                      </td>
+                    <td className="font-medium">{p.name}</td>
+                    <td className="hidden text-gray-600 sm:table-cell">
+                      {p.Category?.name || "-"}
+                    </td>
 
-                      <td className="table-cell font-medium">{p.name}</td>
-                      <td className="table-cell text-gray-600">{p.Category?.name || "-"}</td>
+                    <td className="text-primary font-semibold">THB {formatTHB(p.price)}</td>
 
-                      <td className="table-cell font-semibold text-red-600">
-                        THB {formatTHB(p.price)}
-                      </td>
+                    {/* Toggle Show Price */}
+                    <td className="table-toggle">
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={!p.hide_price}
+                          onChange={() => handleToggleShowPrice(p)}
+                        />
+                        <div className="peer-checked:bg-primary peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full"></div>
+                      </label>
+                    </td>
 
-                      {/* Toggle Show Price */}
-                      <td className="table-toggle">
-                        <label className="relative inline-flex cursor-pointer items-center">
-                          <input
-                            type="checkbox"
-                            className="peer sr-only"
-                            checked={!p.hide_price}
-                            onChange={() => handleToggleShowPrice(p)}
-                          />
-                          <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-red-600 peer-checked:after:translate-x-full"></div>
-                        </label>
-                      </td>
+                    <td className="hidden md:table-cell">{p.stock_quantity}</td>
 
-                      <td className="table-cell">{p.stock_quantity}</td>
+                    {/* Toggle Active / Inactive */}
+                    <td className="table-toggle">
+                      <label className="relative inline-flex cursor-pointer items-center">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={p.status === "active"}
+                          onChange={() => handleToggleStatus(p)}
+                        />
+                        <div className="peer-checked:bg-primary peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full"></div>
+                      </label>
+                    </td>
 
-                      {/* Toggle Active / Inactive */}
-                      <td className="table-toggle">
-                        <label className="relative inline-flex cursor-pointer items-center">
-                          <input
-                            type="checkbox"
-                            className="peer sr-only"
-                            checked={p.status === "active"}
-                            onChange={() => handleToggleStatus(p)}
-                          />
-                          <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-red-600 peer-checked:after:translate-x-full"></div>
-                        </label>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="table-actions">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => router.push(`/admin/products/${p.id}/edit`)}
-                            className="rounded bg-gray-100 p-2 hover:bg-gray-200"
-                          >
-                            <Edit className="h-4 w-4 text-blue-600" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(p.id)}
-                            className="rounded bg-gray-100 p-2 hover:bg-gray-200"
-                          >
-                            <Trash className="h-4 w-4 text-red-600" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    {/* Actions */}
+                    <td className="table-actions text-center">
+                      <div className="flex justify-center gap-2 sm:justify-start">
+                        <button
+                          onClick={() => router.push(`/admin/products/${p.id}/edit`)}
+                          className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+                        >
+                          <Edit className="h-4 w-4 text-blue-600" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+                        >
+                          <Trash className="h-4 w-4 text-red-600" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
           {/* Pagination */}
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-gray-600">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-center text-sm text-gray-600 sm:text-left">
               Showing {(pagination.page - 1) * pagination.limit + 1}–
               {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
             </p>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <button
                 disabled={pagination.page === 1}
                 onClick={() => fetchProducts(page - 1, debouncedSearch)}
-                className={`rounded border px-3 py-1 ${
+                className={`rounded border px-3 py-1 text-sm ${
                   pagination.page === 1
                     ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-red-500 text-white hover:bg-red-600"
+                    : "bg-primary text-white hover:bg-red-700"
                 }`}
               >
                 Previous
@@ -284,8 +268,10 @@ export default function ProductsPage() {
                 <button
                   key={pnum}
                   onClick={() => fetchProducts(pnum, debouncedSearch)}
-                  className={`rounded border px-3 py-1 ${
-                    page === pnum ? "bg-red-600 text-white" : "bg-white hover:bg-gray-50"
+                  className={`rounded border px-3 py-1 text-sm ${
+                    page === pnum
+                      ? "bg-primary text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {pnum}
@@ -295,10 +281,10 @@ export default function ProductsPage() {
               <button
                 disabled={pagination.page === pagination.totalPages}
                 onClick={() => fetchProducts(page + 1, debouncedSearch)}
-                className={`rounded border px-3 py-1 ${
+                className={`rounded border px-3 py-1 text-sm ${
                   pagination.page === pagination.totalPages
                     ? "cursor-not-allowed bg-gray-100 text-gray-400"
-                    : "bg-red-500 text-white hover:bg-red-600"
+                    : "bg-primary text-white hover:bg-red-700"
                 }`}
               >
                 Next
