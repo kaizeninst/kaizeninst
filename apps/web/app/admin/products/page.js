@@ -8,6 +8,36 @@ import Image from "next/image";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import Pagination from "@/components/common/Pagination";
 
+// 🔹 Skeleton Loader
+function TableSkeleton() {
+  return (
+    <div className="table-container w-full animate-pulse">
+      <table className="table">
+        <thead>
+          <tr>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <th key={i}>
+                <div className="h-4 w-16 rounded bg-gray-200"></div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 10 }).map((_, i) => (
+            <tr key={i}>
+              {Array.from({ length: 8 }).map((_, j) => (
+                <td key={j}>
+                  <div className="h-5 w-full rounded bg-gray-100"></div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function ProductsPage() {
   const router = useRouter();
 
@@ -26,13 +56,13 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Debounce search input
+  // 🔹 Debounce search input
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Fetch products
+  // 🔹 Fetch products
   const fetchProducts = async (p = page, s = debouncedSearch) => {
     setLoading(true);
     try {
@@ -55,7 +85,7 @@ export default function ProductsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
-  // Toggle hide_price
+  // 🔹 Toggle price visibility
   const handleToggleShowPrice = async (product) => {
     try {
       const res = await fetch(`/api/products/${product.id}`, {
@@ -74,7 +104,7 @@ export default function ProductsPage() {
     }
   };
 
-  // Toggle status
+  // 🔹 Toggle active/inactive
   const handleToggleStatus = async (product) => {
     try {
       const res = await fetch(`/api/products/${product.id}/toggle`, { method: "PATCH" });
@@ -91,7 +121,7 @@ export default function ProductsPage() {
     }
   };
 
-  // Delete product
+  // 🔹 Delete
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     try {
@@ -104,7 +134,6 @@ export default function ProductsPage() {
     }
   };
 
-  // Format THB
   const formatTHB = (n) =>
     Number(n || 0).toLocaleString("th-TH", {
       minimumFractionDigits: 2,
@@ -113,7 +142,7 @@ export default function ProductsPage() {
 
   return (
     <div className="w-full p-4 sm:p-6">
-      {/* ✅ Breadcrumb */}
+      {/* Breadcrumb */}
       <Breadcrumb
         items={[{ label: "Dashboard", href: "/admin/dashboard" }, { label: "Products" }]}
       />
@@ -141,16 +170,16 @@ export default function ProductsPage() {
           {/* Add Product */}
           <Link
             href="/admin/products/create"
-            className="add-btn bg-primary flex items-center gap-2 rounded-lg px-4 py-2 text-white shadow transition hover:bg-red-700"
+            className="add-btn bg-primary flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-white shadow transition hover:bg-red-700"
           >
             <Plus className="h-4 w-4" /> Add Product
           </Link>
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table or Skeleton */}
       {loading ? (
-        <p>Loading...</p>
+        <TableSkeleton />
       ) : products.length === 0 ? (
         <p className="text-gray-500">No products found.</p>
       ) : (
@@ -192,12 +221,10 @@ export default function ProductsPage() {
                         />
                       </div>
                     </td>
-
                     <td className="font-medium">{p.name}</td>
                     <td className="hidden text-gray-600 sm:table-cell">
                       {p.Category?.name || "-"}
                     </td>
-
                     <td className="text-primary font-semibold">THB {formatTHB(p.price)}</td>
 
                     {/* Toggle Show Price */}
