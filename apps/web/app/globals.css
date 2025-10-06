@@ -32,3 +32,41 @@
 body {
   @apply bg-background text-foreground font-sans antialiased;
 }
+
+/* --------------------------------------------- */
+/* Reusable Table Styles                         */
+/* --------------------------------------------- */
+
+.table-container {
+  @apply overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm;
+}
+
+.table {
+  @apply min-w-full text-sm;
+}
+
+.table thead {
+  @apply bg-gray-100 text-gray-700;
+}
+
+.table th {
+  @apply px-4 py-2 text-left font-medium;
+}
+
+.table tbody tr {
+  @apply border-t hover:bg-gray-50;
+}
+
+.table td {
+  @apply px-4 py-2 align-middle;
+}
+
+/* For toggle column alignment */
+.table-toggle {
+  @apply px-4 py-2 text-left;
+}
+
+/* For action buttons column */
+.table-actions {
+  @apply px-4 py-2;
+}

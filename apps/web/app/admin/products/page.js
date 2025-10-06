@@ -8,11 +8,11 @@ import { Plus, Search, Edit, Trash } from "lucide-react";
 export default function ProductsPage() {
   const router = useRouter();
 
-  // State for products and loading status
+  // Product data and loading state
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Pagination
+  // Pagination state
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [pagination, setPagination] = useState({
@@ -22,17 +22,17 @@ export default function ProductsPage() {
     totalPages: 1,
   });
 
-  // Search states (with debounce)
+  // Search input (with debounce)
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Debounce search input (300ms)
+  // Debounce search typing (delay 300ms)
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Fetch product list
+  // Fetch product list with pagination and search
   const fetchProducts = async (p = page, s = debouncedSearch) => {
     setLoading(true);
     try {
@@ -51,13 +51,13 @@ export default function ProductsPage() {
     }
   };
 
-  // Load product list whenever search changes
+  // Trigger fetch when search input changes
   useEffect(() => {
     fetchProducts(1, debouncedSearch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
-  // Toggle show/hide price
+  // Toggle "hide_price" field
   const handleToggleShowPrice = async (product) => {
     try {
       const res = await fetch(`/api/products/${product.id}`, {
@@ -77,7 +77,7 @@ export default function ProductsPage() {
     }
   };
 
-  // Toggle product status (active/inactive)
+  // Toggle "status" field (active/inactive)
   const handleToggleStatus = async (product) => {
     try {
       const res = await fetch(`/api/products/${product.id}/toggle`, {
@@ -97,24 +97,22 @@ export default function ProductsPage() {
     }
   };
 
-  // Delete product
+  // Delete a product by ID
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
+
     try {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       const data = await res.json();
 
-      if (res.ok) {
-        fetchProducts(page, debouncedSearch);
-      } else {
-        alert(data.error || "Failed to delete");
-      }
+      if (res.ok) fetchProducts(page, debouncedSearch);
+      else alert(data.error || "Failed to delete");
     } catch (err) {
       console.error("Delete error:", err);
     }
   };
 
-  // Format number to THB currency
+  // Format number as THB currency
   const formatTHB = (n) =>
     Number(n || 0).toLocaleString("th-TH", {
       minimumFractionDigits: 2,
@@ -123,7 +121,7 @@ export default function ProductsPage() {
 
   return (
     <div className="p-6">
-      {/* Header */}
+      {/* Page Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Products Management</h1>
@@ -143,7 +141,7 @@ export default function ProductsPage() {
             />
           </div>
 
-          {/* Go to create product page */}
+          {/* Create new product */}
           <Link
             href="/admin/products/create"
             className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
@@ -153,40 +151,39 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Product table */}
+      {/* Product Table */}
       {loading ? (
         <p>Loading...</p>
       ) : products.length === 0 ? (
         <p className="text-gray-500">No products found.</p>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="min-w-full rounded-lg border border-gray-200 bg-white shadow-sm">
-              <thead className="bg-gray-100 text-sm text-gray-700">
+          <div className="table-container">
+            <table className="table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-2 text-left">Image</th>
-                  <th className="px-4 py-2 text-left">Name</th>
-                  <th className="px-4 py-2 text-left">Category</th>
-                  <th className="px-4 py-2 text-left">Price</th>
-                  <th className="px-4 py-2 text-left">Show Price</th>
-                  <th className="px-4 py-2 text-left">Stock</th>
-                  <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Action</th>
+                  <th>Image</th>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Price</th>
+                  <th>Show Price</th>
+                  <th>Stock</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
 
-              <tbody className="text-sm">
+              <tbody>
                 {products.map((p) => {
-                  const isOutOfStock = p.stock_quantity === 0 || p.status !== "active";
                   const imgSrc =
                     p.image_path && p.image_path.trim() !== ""
                       ? p.image_path
                       : "/images/placeholder.png";
 
                   return (
-                    <tr key={p.id} className="border-t hover:bg-gray-50">
-                      {/* Image */}
-                      <td className="px-4 py-2">
+                    <tr key={p.id}>
+                      {/* Product Image */}
+                      <td className="table-cell">
                         <img
                           src={imgSrc}
                           alt={p.name}
@@ -195,19 +192,19 @@ export default function ProductsPage() {
                         />
                       </td>
 
-                      {/* Name */}
-                      <td className="px-4 py-2 font-medium">{p.name}</td>
+                      {/* Product Name */}
+                      <td className="table-cell font-medium">{p.name}</td>
 
                       {/* Category */}
-                      <td className="px-4 py-2 text-gray-600">{p.Category?.name || "-"}</td>
+                      <td className="table-cell text-gray-600">{p.Category?.name || "-"}</td>
 
                       {/* Price */}
-                      <td className="px-4 py-2 font-semibold text-red-600">
+                      <td className="table-cell font-semibold text-red-600">
                         THB {formatTHB(p.price)}
                       </td>
 
                       {/* Toggle show/hide price */}
-                      <td className="px-4 py-2 text-left">
+                      <td className="table-toggle">
                         <label className="relative inline-flex cursor-pointer items-center">
                           <input
                             type="checkbox"
@@ -220,10 +217,10 @@ export default function ProductsPage() {
                       </td>
 
                       {/* Stock quantity */}
-                      <td className="px-4 py-2">{p.stock_quantity}</td>
+                      <td className="table-cell">{p.stock_quantity}</td>
 
                       {/* Toggle active/inactive status */}
-                      <td className="px-4 py-2 text-left">
+                      <td className="table-toggle">
                         <label className="relative inline-flex cursor-pointer items-center">
                           <input
                             type="checkbox"
@@ -235,8 +232,8 @@ export default function ProductsPage() {
                         </label>
                       </td>
 
-                      {/* Actions: edit / delete */}
-                      <td className="px-4 py-2">
+                      {/* Action buttons */}
+                      <td className="table-actions">
                         <div className="flex gap-2">
                           <button
                             onClick={() => router.push(`/admin/products/${p.id}/edit`)}
@@ -259,7 +256,7 @@ export default function ProductsPage() {
             </table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination section */}
           <div className="mt-4 flex items-center justify-between">
             <p className="text-sm text-gray-600">
               Showing {(pagination.page - 1) * pagination.limit + 1}–
@@ -267,6 +264,7 @@ export default function ProductsPage() {
             </p>
 
             <div className="flex gap-2">
+              {/* Previous button */}
               <button
                 disabled={pagination.page === 1}
                 onClick={() => fetchProducts(page - 1, debouncedSearch)}
@@ -279,6 +277,7 @@ export default function ProductsPage() {
                 Previous
               </button>
 
+              {/* Page numbers */}
               {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
@@ -291,6 +290,7 @@ export default function ProductsPage() {
                 </button>
               ))}
 
+              {/* Next button */}
               <button
                 disabled={pagination.page === pagination.totalPages}
                 onClick={() => fetchProducts(page + 1, debouncedSearch)}
