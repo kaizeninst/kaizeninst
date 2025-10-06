@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -11,6 +12,8 @@ import {
   FolderTree,
   LogOut,
   ShieldAlert,
+  Menu,
+  X,
 } from "lucide-react";
 
 const links = [
@@ -25,6 +28,7 @@ const links = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [open, setOpen] = useState(false);
 
   async function onLogout() {
     try {
@@ -38,47 +42,101 @@ export default function Sidebar() {
     }
   }
 
-  return (
-    <aside className="hidden min-h-screen w-[240px] flex-col border-r border-violet-300/70 bg-white md:flex">
-      <div className="px-4 pb-3 pt-4">
-        <span className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-1 text-xs font-semibold text-white">
-          <ShieldAlert size={14} /> ADMIN
-        </span>
+  const SidebarContent = (
+    <>
+      {/* Header */}
+      <div className="border-b border-red-100 px-5 pb-3 pt-5">
+        <div className="flex items-center justify-center gap-2">
+          <span className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow">
+            <ShieldAlert size={14} />
+            ADMIN PANEL
+          </span>
+        </div>
       </div>
 
-      <nav className="flex-1 px-2">
+      {/* Navigation */}
+      <nav className="mt-4 flex-1 space-y-1 px-3">
         {links.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link
               key={href}
               href={href}
+              onClick={() => setOpen(false)}
               className={[
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 active
-                  ? "border border-neutral-200 bg-neutral-100 text-neutral-900"
-                  : "text-neutral-700 hover:bg-neutral-50",
+                  ? "border border-red-200 bg-red-100 text-red-700 shadow-inner"
+                  : "text-neutral-700 hover:bg-red-50 hover:text-red-600",
               ].join(" ")}
             >
-              <Icon size={18} />
+              <Icon
+                size={18}
+                className={[
+                  "transition-transform duration-300",
+                  active ? "scale-110 text-red-600" : "group-hover:scale-110",
+                ].join(" ")}
+              />
               <span>{label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-auto border-t p-4">
-        <div className="text-sm font-semibold">Admin001</div>
-        <div className="text-xs text-neutral-500">Ratchaphon Khawkhiew</div>
+      {/* Footer */}
+      <div className="mt-auto border-t border-red-100 bg-white/60 p-4 backdrop-blur-sm">
+        <div>
+          <div className="text-sm font-semibold text-neutral-800">Admin001</div>
+          <div className="text-xs text-neutral-500">Ratchaphon Khawkhiew</div>
+        </div>
 
         <button
           onClick={onLogout}
-          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm hover:bg-neutral-50"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-md bg-gradient-to-r from-red-500 to-red-600 px-3 py-2 text-sm font-medium text-white shadow transition-all hover:from-red-600 hover:to-red-700 active:scale-[0.98]"
         >
           <LogOut size={16} />
           Logout
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar */}
+      <aside className="hidden min-h-screen w-[250px] flex-col border-r border-red-100 bg-gradient-to-b from-red-50 to-white shadow-sm md:flex">
+        {SidebarContent}
+      </aside>
+
+      {/* Mobile Navbar */}
+      <div className="fixed left-0 top-0 z-30 flex w-full items-center justify-between border-b border-red-100 bg-white px-4 py-3 shadow-sm md:hidden">
+        <button onClick={() => setOpen(true)} className="flex items-center gap-2 text-red-600">
+          <Menu size={24} />
+        </button>
+        <span className="text-sm font-semibold text-red-600">Admin Panel</span>
+        <div className="w-6" />
+      </div>
+
+      {/* Mobile Drawer */}
+      {open && (
+        <div className="fixed inset-0 z-40 flex">
+          {/* Overlay */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+          />
+          {/* Drawer Content */}
+          <aside className="animate-slideIn relative z-50 flex min-h-full w-[240px] flex-col bg-white shadow-lg">
+            <div className="flex items-center justify-between border-b border-red-100 px-4 py-3">
+              <span className="font-semibold text-red-600">Menu</span>
+              <button onClick={() => setOpen(false)} className="text-red-500">
+                <X size={20} />
+              </button>
+            </div>
+            {SidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }
