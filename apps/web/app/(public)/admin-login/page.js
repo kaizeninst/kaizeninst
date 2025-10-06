@@ -31,7 +31,7 @@ export default function AdminLoginPage() {
 
     try {
       // login via same-origin proxy
-      const loginRes = await fetch("/api/admin/auth/login", {
+      const loginRes = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -46,7 +46,7 @@ export default function AdminLoginPage() {
       }
 
       // verify cookie/session via proxy
-      const meRes = await fetch("/api/admin/auth/me", { cache: "no-store" });
+      const meRes = await fetch("/api/auth/me", { cache: "no-store" });
       const me = await safeJson(meRes);
 
       if (!meRes.ok || !me?.authenticated) {
