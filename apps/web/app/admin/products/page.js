@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Edit, Trash } from "lucide-react";
 import Image from "next/image";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -111,6 +112,11 @@ export default function ProductsPage() {
 
   return (
     <div className="w-full p-4 sm:p-6">
+      {/* ✅ Breadcrumb */}
+      <Breadcrumb
+        items={[{ label: "Dashboard", href: "/admin/dashboard" }, { label: "Products" }]}
+      />
+
       {/* Header */}
       <div className="admin-header mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
