@@ -13,7 +13,7 @@ import {
 import { maybeAuth } from "../middleware/maybeAuth.js";
 
 const router = express.Router();
-const upload = multer({ dest: "tmp/" });
+const upload = multer({ dest: "apps/api/tmp" });
 
 // Public
 router.get("/", getAllProducts);

@@ -58,6 +58,9 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+// Serve static files for uploaded images
+app.use("/uploads", express.static(path.join(process.cwd(), "apps/api/public/uploads")));
+
 // API Routes
 app.use("/api/auth", authRoute);
 app.use("/api/categories", categoryRoutes);

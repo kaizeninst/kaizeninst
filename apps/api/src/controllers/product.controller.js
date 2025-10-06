@@ -3,6 +3,7 @@ import path from "path";
 import models from "../models/index.js";
 import { Op } from "sequelize";
 import { getSelfAndDescendantIds } from "../utils/categoryTree.js";
+import { generateUniqueFileName } from "../utils/fileName.js";
 
 const { Product, Category } = models;
 
@@ -186,28 +187,27 @@ export const toggleProductStatus = async (req, res) => {
 // ✅ UPLOAD IMAGE (for dev mode - local)
 export const uploadProductImage = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+    console.log("REQ.FILE =", req.file);
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const mode = process.env.STORAGE_MODE || "local";
-    const filename = `${Date.now()}_${req.file.originalname}`;
+    const newFileName = generateUniqueFileName(req.file.originalname);
 
     let fileUrl = "";
 
     if (mode === "gcs") {
       // Upload to Google Cloud Storage
-      fileUrl = await uploadToGCS(req.file.path, filename);
-      fs.unlinkSync(req.file.path); // remove temp
+      fileUrl = await uploadToGCS(req.file.path, newFileName);
+      fs.unlinkSync(req.file.path); // remove temp file
     } else {
-      // Local mode: move to public/uploads
-      const uploadDir = path.join(path.resolve("apps/api/public/uploads"));
+      // Local mode: save to /public/uploads
+      const uploadDir = path.join(process.cwd(), "apps/api/public/uploads");
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-      const destPath = path.join(uploadDir, `${Date.now()}_${req.file.originalname}`);
+      const destPath = path.join(uploadDir, newFileName);
       fs.renameSync(req.file.path, destPath);
 
-      res.json({ url: `/uploads/${Date.now()}_${req.file.originalname}` });
+      fileUrl = `/uploads/${newFileName}`;
     }
 
     return res.json({ url: fileUrl, storage: mode });

@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Edit, Trash } from "lucide-react";
+import Image from "next/image";
 
 export default function ProductsPage() {
   const router = useRouter();
 
-  // Product data and loading state
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Pagination state
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [pagination, setPagination] = useState({
@@ -22,17 +21,16 @@ export default function ProductsPage() {
     totalPages: 1,
   });
 
-  // Search input (with debounce)
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Debounce search typing (delay 300ms)
+  // Debounce search input
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Fetch product list with pagination and search
+  // Fetch products
   const fetchProducts = async (p = page, s = debouncedSearch) => {
     setLoading(true);
     try {
@@ -40,7 +38,6 @@ export default function ProductsPage() {
         `/api/products?page=${p}&limit=${limit}&search=${encodeURIComponent(s)}`
       );
       const data = await res.json();
-
       setProducts(data?.data || []);
       setPagination(data?.pagination || { total: 0, page: 1, limit, totalPages: 1 });
       setPage(data?.pagination?.page || p);
@@ -51,13 +48,12 @@ export default function ProductsPage() {
     }
   };
 
-  // Trigger fetch when search input changes
   useEffect(() => {
     fetchProducts(1, debouncedSearch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
-  // Toggle "hide_price" field
+  // Toggle hide_price
   const handleToggleShowPrice = async (product) => {
     try {
       const res = await fetch(`/api/products/${product.id}`, {
@@ -66,7 +62,6 @@ export default function ProductsPage() {
         body: JSON.stringify({ hide_price: !product.hide_price }),
       });
       const data = await res.json();
-
       if (res.ok) {
         setProducts((prev) =>
           prev.map((p) => (p.id === product.id ? { ...p, hide_price: data.hide_price } : p))
@@ -77,14 +72,11 @@ export default function ProductsPage() {
     }
   };
 
-  // Toggle "status" field (active/inactive)
+  // Toggle status
   const handleToggleStatus = async (product) => {
     try {
-      const res = await fetch(`/api/products/${product.id}/toggle`, {
-        method: "PATCH",
-      });
+      const res = await fetch(`/api/products/${product.id}/toggle`, { method: "PATCH" });
       const data = await res.json();
-
       if (res.ok) {
         setProducts((prev) =>
           prev.map((p) => (p.id === product.id ? { ...p, status: data.status } : p))
@@ -97,14 +89,12 @@ export default function ProductsPage() {
     }
   };
 
-  // Delete a product by ID
+  // Delete product
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
-
     try {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       const data = await res.json();
-
       if (res.ok) fetchProducts(page, debouncedSearch);
       else alert(data.error || "Failed to delete");
     } catch (err) {
@@ -112,7 +102,7 @@ export default function ProductsPage() {
     }
   };
 
-  // Format number as THB currency
+  // Format THB
   const formatTHB = (n) =>
     Number(n || 0).toLocaleString("th-TH", {
       minimumFractionDigits: 2,
@@ -121,7 +111,7 @@ export default function ProductsPage() {
 
   return (
     <div className="p-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Products Management</h1>
@@ -129,7 +119,7 @@ export default function ProductsPage() {
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {/* Search input */}
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
@@ -141,7 +131,7 @@ export default function ProductsPage() {
             />
           </div>
 
-          {/* Create new product */}
+          {/* Add Product */}
           <Link
             href="/admin/products/create"
             className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
@@ -151,7 +141,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Product Table */}
+      {/* Table */}
       {loading ? (
         <p>Loading...</p>
       ) : products.length === 0 ? (
@@ -177,33 +167,48 @@ export default function ProductsPage() {
                 {products.map((p) => {
                   const imgSrc =
                     p.image_path && p.image_path.trim() !== ""
-                      ? p.image_path
-                      : "/images/placeholder.png";
+                      ? p.image_path.startsWith("http")
+                        ? p.image_path // external / GCS
+                        : p.image_path.startsWith("/uploads")
+                          ? p.image_path // local served by Express
+                          : `/uploads/${p.image_path}` // fallback
+                      : "/images/placeholder.png"; // no image
 
                   return (
                     <tr key={p.id}>
                       {/* Product Image */}
                       <td className="table-cell">
-                        <img
-                          src={imgSrc}
-                          alt={p.name}
-                          className="h-10 w-10 rounded border object-cover"
-                          loading="lazy"
-                        />
+                        <div className="relative h-10 w-10 overflow-hidden rounded border bg-gray-100">
+                          <Image
+                            src={
+                              p.image_path && p.image_path.trim() !== ""
+                                ? p.image_path.startsWith("http")
+                                  ? p.image_path // External (GCS or CDN)
+                                  : p.image_path.startsWith("/uploads")
+                                    ? p.image_path // Local (served by Express)
+                                    : `/uploads/${p.image_path}` // Fallback
+                                : "/images/placeholder.png" // No image
+                            }
+                            alt={p.name || "Product image"}
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                            unoptimized // ให้โหลดได้แม้เป็น external URL
+                            onError={(e) => {
+                              e.target.src = "/images/placeholder.png";
+                            }}
+                          />
+                        </div>
                       </td>
 
-                      {/* Product Name */}
                       <td className="table-cell font-medium">{p.name}</td>
-
-                      {/* Category */}
                       <td className="table-cell text-gray-600">{p.Category?.name || "-"}</td>
 
-                      {/* Price */}
                       <td className="table-cell font-semibold text-red-600">
                         THB {formatTHB(p.price)}
                       </td>
 
-                      {/* Toggle show/hide price */}
+                      {/* Toggle Show Price */}
                       <td className="table-toggle">
                         <label className="relative inline-flex cursor-pointer items-center">
                           <input
@@ -216,10 +221,9 @@ export default function ProductsPage() {
                         </label>
                       </td>
 
-                      {/* Stock quantity */}
                       <td className="table-cell">{p.stock_quantity}</td>
 
-                      {/* Toggle active/inactive status */}
+                      {/* Toggle Active / Inactive */}
                       <td className="table-toggle">
                         <label className="relative inline-flex cursor-pointer items-center">
                           <input
@@ -232,7 +236,7 @@ export default function ProductsPage() {
                         </label>
                       </td>
 
-                      {/* Action buttons */}
+                      {/* Actions */}
                       <td className="table-actions">
                         <div className="flex gap-2">
                           <button
@@ -256,7 +260,7 @@ export default function ProductsPage() {
             </table>
           </div>
 
-          {/* Pagination section */}
+          {/* Pagination */}
           <div className="mt-4 flex items-center justify-between">
             <p className="text-sm text-gray-600">
               Showing {(pagination.page - 1) * pagination.limit + 1}–
@@ -264,7 +268,6 @@ export default function ProductsPage() {
             </p>
 
             <div className="flex gap-2">
-              {/* Previous button */}
               <button
                 disabled={pagination.page === 1}
                 onClick={() => fetchProducts(page - 1, debouncedSearch)}
@@ -277,20 +280,18 @@ export default function ProductsPage() {
                 Previous
               </button>
 
-              {/* Page numbers */}
-              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((pnum) => (
                 <button
-                  key={p}
-                  onClick={() => fetchProducts(p, debouncedSearch)}
+                  key={pnum}
+                  onClick={() => fetchProducts(pnum, debouncedSearch)}
                   className={`rounded border px-3 py-1 ${
-                    page === p ? "bg-red-600 text-white" : "bg-white hover:bg-gray-50"
+                    page === pnum ? "bg-red-600 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
-                  {p}
+                  {pnum}
                 </button>
               ))}
 
-              {/* Next button */}
               <button
                 disabled={pagination.page === pagination.totalPages}
                 onClick={() => fetchProducts(page + 1, debouncedSearch)}
