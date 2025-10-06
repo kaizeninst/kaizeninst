@@ -8,9 +8,11 @@ import { Plus, Search, Edit, Trash } from "lucide-react";
 export default function ProductsPage() {
   const router = useRouter();
 
+  // State for products and loading status
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Pagination
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [pagination, setPagination] = useState({
@@ -20,16 +22,17 @@ export default function ProductsPage() {
     totalPages: 1,
   });
 
+  // Search states (with debounce)
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // debounce ค้นหา 300ms
+  // Debounce search input (300ms)
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // โหลดรายการสินค้า
+  // Fetch product list
   const fetchProducts = async (p = page, s = debouncedSearch) => {
     setLoading(true);
     try {
@@ -37,6 +40,7 @@ export default function ProductsPage() {
         `/api/products?page=${p}&limit=${limit}&search=${encodeURIComponent(s)}`
       );
       const data = await res.json();
+
       setProducts(data?.data || []);
       setPagination(data?.pagination || { total: 0, page: 1, limit, totalPages: 1 });
       setPage(data?.pagination?.page || p);
@@ -47,12 +51,13 @@ export default function ProductsPage() {
     }
   };
 
+  // Load product list whenever search changes
   useEffect(() => {
     fetchProducts(1, debouncedSearch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
-  // สลับการแสดงราคา
+  // Toggle show/hide price
   const handleToggleShowPrice = async (product) => {
     try {
       const res = await fetch(`/api/products/${product.id}`, {
@@ -61,6 +66,7 @@ export default function ProductsPage() {
         body: JSON.stringify({ hide_price: !product.hide_price }),
       });
       const data = await res.json();
+
       if (res.ok) {
         setProducts((prev) =>
           prev.map((p) => (p.id === product.id ? { ...p, hide_price: data.hide_price } : p))
@@ -71,13 +77,14 @@ export default function ProductsPage() {
     }
   };
 
-  // ✅ เพิ่มฟังก์ชันนี้ต่อจาก handleToggleShowPrice
+  // Toggle product status (active/inactive)
   const handleToggleStatus = async (product) => {
     try {
       const res = await fetch(`/api/products/${product.id}/toggle`, {
         method: "PATCH",
       });
       const data = await res.json();
+
       if (res.ok) {
         setProducts((prev) =>
           prev.map((p) => (p.id === product.id ? { ...p, status: data.status } : p))
@@ -90,22 +97,29 @@ export default function ProductsPage() {
     }
   };
 
-  // ลบสินค้า
+  // Delete product
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     try {
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       const data = await res.json();
-      if (res.ok) fetchProducts(page, debouncedSearch);
-      else alert(data.error || "Failed to delete");
+
+      if (res.ok) {
+        fetchProducts(page, debouncedSearch);
+      } else {
+        alert(data.error || "Failed to delete");
+      }
     } catch (err) {
       console.error("Delete error:", err);
     }
   };
 
-  // helper
+  // Format number to THB currency
   const formatTHB = (n) =>
-    Number(n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    Number(n || 0).toLocaleString("th-TH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
   return (
     <div className="p-6">
@@ -117,7 +131,7 @@ export default function ProductsPage() {
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {/* Search */}
+          {/* Search input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
@@ -129,7 +143,7 @@ export default function ProductsPage() {
             />
           </div>
 
-          {/* ไปหน้าสร้างสินค้า */}
+          {/* Go to create product page */}
           <Link
             href="/admin/products/create"
             className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-white shadow hover:bg-red-700"
@@ -139,7 +153,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Product table */}
       {loading ? (
         <p>Loading...</p>
       ) : products.length === 0 ? (
@@ -160,6 +174,7 @@ export default function ProductsPage() {
                   <th className="px-4 py-2 text-left">Action</th>
                 </tr>
               </thead>
+
               <tbody className="text-sm">
                 {products.map((p) => {
                   const isOutOfStock = p.stock_quantity === 0 || p.status !== "active";
@@ -167,6 +182,7 @@ export default function ProductsPage() {
                     p.image_path && p.image_path.trim() !== ""
                       ? p.image_path
                       : "/images/placeholder.png";
+
                   return (
                     <tr key={p.id} className="border-t hover:bg-gray-50">
                       {/* Image */}
@@ -190,7 +206,7 @@ export default function ProductsPage() {
                         THB {formatTHB(p.price)}
                       </td>
 
-                      {/* Show Price toggle */}
+                      {/* Toggle show/hide price */}
                       <td className="px-4 py-2 text-left">
                         <label className="relative inline-flex cursor-pointer items-center">
                           <input
@@ -203,10 +219,10 @@ export default function ProductsPage() {
                         </label>
                       </td>
 
-                      {/* Stock */}
+                      {/* Stock quantity */}
                       <td className="px-4 py-2">{p.stock_quantity}</td>
 
-                      {/* Status toggle */}
+                      {/* Toggle active/inactive status */}
                       <td className="px-4 py-2 text-left">
                         <label className="relative inline-flex cursor-pointer items-center">
                           <input
@@ -219,7 +235,7 @@ export default function ProductsPage() {
                         </label>
                       </td>
 
-                      {/* Actions */}
+                      {/* Actions: edit / delete */}
                       <td className="px-4 py-2">
                         <div className="flex gap-2">
                           <button
