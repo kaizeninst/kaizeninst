@@ -1,10 +1,12 @@
+import fs from "fs";
+import path from "path";
 import models from "../models/index.js";
 import { Op } from "sequelize";
 import { getSelfAndDescendantIds } from "../utils/categoryTree.js";
 
 const { Product, Category } = models;
 
-// ✅ CREATE
+// ✅ CREATE PRODUCT
 export const createProduct = async (req, res) => {
   try {
     const {
@@ -107,7 +109,7 @@ export const getProductById = async (req, res) => {
   }
 };
 
-// ✅ BULK (POST /api/products/bulk  { ids: [1,2,3] })
+// ✅ BULK FETCH (POST /api/products/bulk  { ids: [1,2,3] })
 export const getProductsBulk = async (req, res) => {
   try {
     const ids = (req.body?.ids || []).map(Number).filter(Boolean);
@@ -126,7 +128,7 @@ export const getProductsBulk = async (req, res) => {
   }
 };
 
-// ✅ UPDATE
+// ✅ UPDATE PRODUCT
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
@@ -139,11 +141,20 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// ✅ DELETE
+// ✅ DELETE PRODUCT
 export const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found" });
+
+    // ลบไฟล์ภาพออกจาก public/uploads ด้วย (dev mode)
+    if (product.image_path) {
+      const localPath = path.join(process.cwd(), "public", product.image_path);
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+        console.log("🗑️ Removed:", localPath);
+      }
+    }
 
     await product.destroy();
     res.json({ message: "Product deleted successfully" });
@@ -168,6 +179,40 @@ export const toggleProductStatus = async (req, res) => {
     });
   } catch (err) {
     console.error("PATCH /products/:id/toggle error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ✅ UPLOAD IMAGE (for dev mode - local)
+export const uploadProductImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const mode = process.env.STORAGE_MODE || "local";
+    const filename = `${Date.now()}_${req.file.originalname}`;
+
+    let fileUrl = "";
+
+    if (mode === "gcs") {
+      // Upload to Google Cloud Storage
+      fileUrl = await uploadToGCS(req.file.path, filename);
+      fs.unlinkSync(req.file.path); // remove temp
+    } else {
+      // Local mode: move to public/uploads
+      const uploadDir = path.join(path.resolve("apps/api/public/uploads"));
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+      const destPath = path.join(uploadDir, `${Date.now()}_${req.file.originalname}`);
+      fs.renameSync(req.file.path, destPath);
+
+      res.json({ url: `/uploads/${Date.now()}_${req.file.originalname}` });
+    }
+
+    return res.json({ url: fileUrl, storage: mode });
+  } catch (err) {
+    console.error("POST /products/upload error:", err);
     res.status(500).json({ error: err.message });
   }
 };
