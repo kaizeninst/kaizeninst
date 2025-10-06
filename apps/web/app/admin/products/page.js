@@ -71,6 +71,25 @@ export default function ProductsPage() {
     }
   };
 
+  // ✅ เพิ่มฟังก์ชันนี้ต่อจาก handleToggleShowPrice
+  const handleToggleStatus = async (product) => {
+    try {
+      const res = await fetch(`/api/products/${product.id}/toggle`, {
+        method: "PATCH",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === product.id ? { ...p, status: data.status } : p))
+        );
+      } else {
+        alert(data.error || "Failed to toggle status");
+      }
+    } catch (err) {
+      console.error("Toggle status error:", err);
+    }
+  };
+
   // ลบสินค้า
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
@@ -187,15 +206,17 @@ export default function ProductsPage() {
                       {/* Stock */}
                       <td className="px-4 py-2">{p.stock_quantity}</td>
 
-                      {/* Status */}
-                      <td className="px-4 py-2">
-                        <span
-                          className={`rounded px-3 py-1 text-xs font-semibold ${
-                            isOutOfStock ? "bg-red-500 text-white" : "bg-black text-white"
-                          }`}
-                        >
-                          {isOutOfStock ? "Out of Stock" : "In Stock"}
-                        </span>
+                      {/* Status toggle */}
+                      <td className="px-4 py-2 text-left">
+                        <label className="relative inline-flex cursor-pointer items-center">
+                          <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={p.status === "active"}
+                            onChange={() => handleToggleStatus(p)}
+                          />
+                          <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-red-600 peer-checked:after:translate-x-full"></div>
+                        </label>
                       </td>
 
                       {/* Actions */}
