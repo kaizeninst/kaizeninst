@@ -31,6 +31,7 @@ export default function EditProductPage() {
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isInitialDescSet, setIsInitialDescSet] = useState(false);
 
   // -----------------------------
   // FETCH DATA
@@ -62,16 +63,27 @@ export default function EditProductPage() {
   // QUILL
   // -----------------------------
   useEffect(() => {
-    if (quill && form) {
-      quill.root.innerHTML = form.description || "";
-      quill.on("text-change", () => {
-        setForm((prev) => ({
-          ...prev,
-          description: quill.root.innerHTML,
-        }));
-      });
+    if (!quill) return;
+
+    const handleChange = () => {
+      setForm((prev) => ({
+        ...prev,
+        description: quill.root.innerHTML,
+      }));
+    };
+
+    quill.on("text-change", handleChange);
+    return () => quill.off("text-change", handleChange);
+  }, [quill]);
+
+  useEffect(() => {
+    // ✅ set ค่าเริ่มต้นครั้งเดียวหลังโหลดข้อมูล product แล้ว
+    if (quill && form?.description && !isInitialDescSet) {
+      quill.root.innerHTML = form.description;
+      setIsInitialDescSet(true);
+      setTimeout(() => quill.focus(), 100);
     }
-  }, [quill, form]);
+  }, [quill, form?.description, isInitialDescSet]);
 
   // -----------------------------
   // HANDLERS
