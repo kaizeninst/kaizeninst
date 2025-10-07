@@ -8,9 +8,9 @@ export default function ProductCard({ product }) {
       <div className="bg-background group flex h-full flex-col overflow-hidden rounded-[5px] drop-shadow-lg transition hover:shadow-lg">
         <div className="relative h-56 w-full overflow-hidden">
           <Image
-            src={product.image}
+            src={product.image_path}
             alt={product.name}
-            width={400}
+            width={300}
             height={300}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             unoptimized
