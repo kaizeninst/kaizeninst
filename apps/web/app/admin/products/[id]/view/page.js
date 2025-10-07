@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import Image from "next/image";
 import { Edit, ArrowLeft, Trash2 } from "lucide-react";
+import DOMPurify from "dompurify";
 
 export default function ViewProductPage() {
   const router = useRouter();
@@ -159,9 +160,11 @@ export default function ViewProductPage() {
         <div className="mt-8">
           <p className="mb-2 text-sm text-gray-500">Description</p>
           <div
-            className="prose max-w-none text-gray-700"
+            className="prose max-w-none"
             dangerouslySetInnerHTML={{
-              __html: product.description || "<em>No description provided.</em>",
+              __html: DOMPurify.sanitize(
+                product.description || "<em>No description provided.</em>"
+              ),
             }}
           />
         </div>

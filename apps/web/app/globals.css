@@ -183,3 +183,53 @@ body {
     @apply w-full justify-center;
   }
 }
+
+/* ---------------------------------------------------------- */
+/* 📰 PROSE (RICH TEXT FOR DESCRIPTION)                        */
+/* ---------------------------------------------------------- */
+
+.prose {
+  @apply max-w-none leading-relaxed text-gray-800;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  @apply mb-2 mt-4 font-semibold text-gray-900;
+}
+
+.prose ul {
+  @apply mb-3 list-disc pl-6;
+}
+
+.prose ol {
+  @apply mb-3 list-decimal pl-6;
+}
+
+.prose li {
+  @apply mb-1;
+}
+
+.prose strong {
+  @apply font-bold;
+}
+
+.prose em {
+  @apply italic;
+}
+
+.prose u {
+  text-decoration: underline;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-gray-300 pl-4 italic text-gray-600;
+}
+
+.prose code {
+  @apply rounded bg-gray-100 px-1.5 py-0.5 text-red-600;
+}
+
+.prose pre {
+  @apply overflow-x-auto rounded-lg bg-gray-900 p-3 text-gray-100;
+}
