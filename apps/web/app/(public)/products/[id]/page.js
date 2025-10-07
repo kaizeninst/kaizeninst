@@ -3,11 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import DOMPurify from "dompurify";
 
 export default function ProductDetailPage({ params }) {
   const { id } = params;
   const [product, setProduct] = useState(null);
-  const [quantity, setQuantity] = useState(5);
+  const [quantity, setQuantity] = useState(1);
   const [showPopup, setShowPopup] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -185,9 +186,15 @@ export default function ProductDetailPage({ params }) {
 
           <div className="space-y-3">
             <h2 className="text-2xl font-bold">Product Information</h2>
-            <p className="leading-7 text-gray-700">
-              {product.description || "No additional information is available for this product."}
-            </p>
+            <div
+              className="prose max-w-none leading-7 text-gray-700"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(
+                  product.description ||
+                    "<em>No additional information is available for this product.</em>"
+                ),
+              }}
+            />
           </div>
 
           {product.specifications && typeof product.specifications === "object" ? (
