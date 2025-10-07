@@ -5,23 +5,34 @@ const { Category, Product } = models;
 // ✅ CREATE
 export const createCategory = async (req, res) => {
   try {
-    const { name, slug, parent_id = null, sort_order } = req.body;
+    let { name, slug, parent_id = null } = req.body;
 
-    // ✅ กัน sort_order ซ้ำภายใต้ parent เดียวกัน
-    if (sort_order !== undefined) {
-      const exists = await Category.findOne({
-        where: { parent_id, sort_order },
-      });
-      if (exists) {
-        return res.status(400).json({
-          error: `Sort order ${sort_order} already exists in this parent category`,
-        });
-      }
-    }
+    // ถ้า parent_id ส่งมาเป็น string ว่าง ให้แปลงเป็น null
+    if (parent_id === "" || parent_id === "null") parent_id = null;
 
-    const category = await Category.create(req.body);
-    res.status(201).json(category);
+    // ✅ หา sort_order สูงสุดของ parent เดียวกัน
+    const maxOrder = await Category.max("sort_order", {
+      where: { parent_id },
+    });
+
+    // ✅ ถ้ายังไม่มี category ใน parent นี้ ให้เริ่มจาก 1
+    const nextOrder = isNaN(maxOrder) ? 1 : maxOrder + 1;
+
+    // ✅ สร้าง category ใหม่ โดยไม่ให้ user ระบุ sort_order เอง
+    const category = await Category.create({
+      name,
+      slug,
+      parent_id,
+      sort_order: nextOrder,
+      status: req.body.status || "active",
+    });
+
+    res.status(201).json({
+      message: "Category created successfully",
+      data: category,
+    });
   } catch (err) {
+    console.error("POST /categories error:", err);
     res.status(400).json({ error: err.message });
   }
 };

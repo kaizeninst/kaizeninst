@@ -189,7 +189,6 @@ function CategoryModal({ isOpen, onClose, mode, category, onSuccess }) {
     name: "",
     slug: "",
     parent_id: null,
-    sort_order: 0,
     status: "active",
   });
   const [parents, setParents] = useState([]);
@@ -303,17 +302,6 @@ function CategoryModal({ isOpen, onClose, mode, category, onSuccess }) {
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">Sort Order</label>
-            <input
-              type="number"
-              name="sort_order"
-              value={form.sort_order}
-              onChange={handleChange}
-              className="w-full rounded border px-3 py-2"
-            />
           </div>
 
           <div className="flex justify-end gap-2">
