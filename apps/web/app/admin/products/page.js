@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Edit, Trash } from "lucide-react";
+import { Plus, Search, Edit, Trash, Eye } from "lucide-react";
 import Image from "next/image";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import Pagination from "@/components/common/Pagination";
@@ -43,7 +43,6 @@ export default function ProductsPage() {
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [pagination, setPagination] = useState({
@@ -52,7 +51,6 @@ export default function ProductsPage() {
     limit: 10,
     totalPages: 1,
   });
-
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -258,12 +256,23 @@ export default function ProductsPage() {
                     {/* Actions */}
                     <td className="table-actions text-center">
                       <div className="flex justify-center gap-2 sm:justify-start">
+                        {/* 👁 View */}
+                        <button
+                          onClick={() => router.push(`/admin/products/${p.id}/view`)}
+                          className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+                        >
+                          <Eye className="h-4 w-4 text-gray-700" />
+                        </button>
+
+                        {/* ✏️ Edit */}
                         <button
                           onClick={() => router.push(`/admin/products/${p.id}/edit`)}
                           className="rounded bg-gray-100 p-2 hover:bg-gray-200"
                         >
                           <Edit className="h-4 w-4 text-blue-600" />
                         </button>
+
+                        {/* 🗑 Delete */}
                         <button
                           onClick={() => handleDelete(p.id)}
                           className="rounded bg-gray-100 p-2 hover:bg-gray-200"
