@@ -2,19 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useQuill } from "react-quilljs";
-import "quill/dist/quill.snow.css";
 import Breadcrumb from "@/components/common/Breadcrumb";
+import RichTextEditor from "@/components/common/RichTextEditor";
 import { UploadCloud, ImagePlus, X } from "lucide-react";
 
 export default function EditProductPage() {
   const router = useRouter();
   const { id } = useParams();
-  const { quill, quillRef } = useQuill();
 
-  // -----------------------------
-  // STATE
-  // -----------------------------
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -26,15 +21,15 @@ export default function EditProductPage() {
     status: "active",
     image_path: "",
   });
+
   const [categories, setCategories] = useState([]);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [isInitialDescSet, setIsInitialDescSet] = useState(false);
 
   // -----------------------------
-  // FETCH DATA
+  // FETCH PRODUCT + CATEGORY
   // -----------------------------
   useEffect(() => {
     const fetchData = async () => {
@@ -55,38 +50,11 @@ export default function EditProductPage() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [id]);
 
   // -----------------------------
-  // QUILL
-  // -----------------------------
-  useEffect(() => {
-    if (!quill) return;
-
-    const handleChange = () => {
-      setForm((prev) => ({
-        ...prev,
-        description: quill.root.innerHTML,
-      }));
-    };
-
-    quill.on("text-change", handleChange);
-    return () => quill.off("text-change", handleChange);
-  }, [quill]);
-
-  useEffect(() => {
-    // ✅ set ค่าเริ่มต้นครั้งเดียวหลังโหลดข้อมูล product แล้ว
-    if (quill && form?.description && !isInitialDescSet) {
-      quill.root.innerHTML = form.description;
-      setIsInitialDescSet(true);
-      setTimeout(() => quill.focus(), 100);
-    }
-  }, [quill, form?.description, isInitialDescSet]);
-
-  // -----------------------------
-  // HANDLERS
+  // HANDLE INPUT CHANGE
   // -----------------------------
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -96,6 +64,9 @@ export default function EditProductPage() {
     }));
   };
 
+  // -----------------------------
+  // FILE HANDLER
+  // -----------------------------
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -107,18 +78,19 @@ export default function EditProductPage() {
     setPreview(URL.createObjectURL(f));
   };
 
+  // -----------------------------
+  // UPLOAD IMAGE
+  // -----------------------------
   const handleUpload = async () => {
     if (!file) return "";
     try {
       setUploading(true);
       const formData = new FormData();
       formData.append("file", file);
-
       const res = await fetch("/api/products/upload", {
         method: "POST",
         body: formData,
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
       return data.url;
@@ -131,14 +103,12 @@ export default function EditProductPage() {
   };
 
   // -----------------------------
-  // SUBMIT
+  // SUBMIT UPDATE
   // -----------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       let imageUrl = form.image_path;
-
-      // upload new image if selected
       if (file) {
         const uploaded = await handleUpload();
         if (uploaded) imageUrl = uploaded;
@@ -186,7 +156,7 @@ export default function EditProductPage() {
                 value={form.name}
                 onChange={handleChange}
                 required
-                className="w-full rounded border px-3 py-2 focus:border-red-500 focus:ring focus:ring-red-200"
+                className="w-full rounded border px-3 py-2"
               />
             </div>
 
@@ -197,7 +167,7 @@ export default function EditProductPage() {
                 value={form.slug}
                 onChange={handleChange}
                 required
-                className="w-full rounded border px-3 py-2 focus:border-red-500 focus:ring focus:ring-red-200"
+                className="w-full rounded border px-3 py-2"
               />
             </div>
 
@@ -209,7 +179,7 @@ export default function EditProductPage() {
                 step="0.01"
                 value={form.price}
                 onChange={handleChange}
-                className="w-full rounded border px-3 py-2 focus:border-red-500 focus:ring focus:ring-red-200"
+                className="w-full rounded border px-3 py-2"
               />
             </div>
 
@@ -220,7 +190,7 @@ export default function EditProductPage() {
                 type="number"
                 value={form.stock_quantity}
                 onChange={handleChange}
-                className="w-full rounded border px-3 py-2 focus:border-red-500 focus:ring focus:ring-red-200"
+                className="w-full rounded border px-3 py-2"
               />
             </div>
 
@@ -230,7 +200,7 @@ export default function EditProductPage() {
                 name="category_id"
                 value={form.category_id}
                 onChange={handleChange}
-                className="w-full rounded border px-3 py-2 focus:border-red-500 focus:ring focus:ring-red-200"
+                className="w-full rounded border px-3 py-2"
               >
                 <option value="">Select Category</option>
                 {categories.map((c) => (
@@ -247,7 +217,7 @@ export default function EditProductPage() {
                 name="status"
                 value={form.status}
                 onChange={handleChange}
-                className="w-full rounded border px-3 py-2 focus:border-red-500 focus:ring focus:ring-red-200"
+                className="w-full rounded border px-3 py-2"
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
@@ -258,18 +228,17 @@ export default function EditProductPage() {
           {/* ---------- Description ---------- */}
           <div>
             <label className="mb-1 block text-sm font-medium">Description</label>
-            <div
-              ref={quillRef}
-              className="h-48 overflow-y-auto rounded border focus:border-red-500 focus:ring focus:ring-red-200"
+            <RichTextEditor
+              value={form.description}
+              onChange={(val) => setForm((prev) => ({ ...prev, description: val }))}
             />
           </div>
 
           {/* ---------- Image Upload ---------- */}
           <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Product Image</label>
-
             <div
-              className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition hover:border-red-400 ${
+              className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center ${
                 preview ? "border-gray-300 bg-gray-50" : "border-gray-300"
               }`}
               onClick={() => document.getElementById("image-upload").click()}
@@ -297,7 +266,7 @@ export default function EditProductPage() {
                       setPreview(null);
                       setFile(null);
                     }}
-                    className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white shadow hover:bg-red-600"
+                    className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -317,7 +286,6 @@ export default function EditProductPage() {
                 </div>
               )}
             </div>
-
             <input
               id="image-upload"
               type="file"
@@ -327,14 +295,14 @@ export default function EditProductPage() {
             />
           </div>
 
-          {/* ---------- Options ---------- */}
+          {/* ---------- Misc Options ---------- */}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
               name="hide_price"
               checked={form.hide_price}
               onChange={handleChange}
-              className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+              className="h-4 w-4 rounded border-gray-300 text-red-600"
             />
             <label className="text-sm">Hide Price</label>
           </div>
