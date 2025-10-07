@@ -41,3 +41,4 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+/apps/api/apps/api/public/uploads
