@@ -2,6 +2,7 @@ import express from "express";
 import {
   createCategory,
   getAllCategories,
+  getParentCategories,
   getCategoryById,
   updateCategory,
   deleteCategory,
@@ -13,6 +14,7 @@ import { maybeAuth } from "../middleware/maybeAuth.js";
 const router = express.Router();
 
 // Public
+router.get("/parents", getParentCategories);
 router.get("/", getAllCategories);
 router.get("/:id", getCategoryById);
 

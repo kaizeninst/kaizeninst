@@ -175,6 +175,92 @@ export const getCategoryById = async (req, res) => {
   }
 };
 
+// ✅ READ PARENT CATEGORIES (with children + product count)
+export const getParentCategories = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const { search, status } = req.query;
+
+    const where = { parent_id: null };
+    if (status) where.status = status;
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { slug: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    // ✅ นับเฉพาะ parent category จริง ๆ
+    const totalParents = await Category.count({ where });
+
+    // ✅ ดึงข้อมูลเฉพาะหน้านี้
+    const rows = await Category.findAll({
+      where,
+      limit,
+      offset,
+      order: [["sort_order", "ASC"]],
+      include: [
+        {
+          model: Category,
+          as: "children",
+          attributes: [
+            "id",
+            "name",
+            "slug",
+            "status",
+            "sort_order",
+            "created_at",
+            "updated_at",
+            "parent_id",
+          ],
+          include: [{ model: Product, attributes: ["id"] }],
+          separate: true,
+          order: [["sort_order", "ASC"]],
+        },
+        { model: Product, attributes: ["id"] },
+      ],
+    });
+
+    const data = rows.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      parent_id: cat.parent_id,
+      status: cat.status,
+      sort_order: cat.sort_order,
+      created_at: cat.created_at,
+      updated_at: cat.updated_at,
+      productsCount: cat.Products?.length || 0,
+      children: cat.children.map((child) => ({
+        id: child.id,
+        name: child.name,
+        slug: child.slug,
+        parent_id: child.parent_id,
+        status: child.status,
+        sort_order: child.sort_order,
+        created_at: child.created_at,
+        updated_at: child.updated_at,
+        productsCount: child.Products?.length || 0,
+      })),
+    }));
+
+    res.json({
+      data,
+      pagination: {
+        total: totalParents, // ✅ นับ parent จริง
+        page,
+        limit,
+        totalPages: Math.ceil(totalParents / limit),
+      },
+    });
+  } catch (err) {
+    console.error("GET /categories/parents error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // ✅ UPDATE
 export const updateCategory = async (req, res) => {
   try {
