@@ -11,7 +11,7 @@ export default (sequelize) => {
       requested_at: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
       valid_until: { type: DataTypes.DATEONLY, allowNull: true },
       status: {
-        type: DataTypes.ENUM("draft", "sent", "accepted", "rejected", "expired"),
+        type: DataTypes.ENUM("draft", "sent", "accepted", "rejected", "expired", "converted"),
         allowNull: false,
         defaultValue: "draft",
       },

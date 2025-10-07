@@ -13,6 +13,7 @@ import {
   XCircle,
   Clock,
   RefreshCcw,
+  Repeat2,
 } from "lucide-react";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import Pagination from "@/components/common/Pagination";
@@ -34,13 +35,14 @@ function SummaryCard({ icon: Icon, label, value, color }) {
 
 /* ---------------------- Status Dropdown ---------------------- */
 function StatusDropdown({ value, onChange }) {
-  const statuses = ["draft", "sent", "accepted", "rejected", "expired"];
+  const statuses = ["draft", "sent", "accepted", "rejected", "expired", "converted"];
   const colors = {
     draft: "text-gray-700",
     sent: "text-blue-600",
     accepted: "text-green-600",
     rejected: "text-red-600",
     expired: "text-orange-600",
+    converted: "text-purple-600",
   };
   return (
     <select
@@ -159,6 +161,7 @@ export default function QuotesPage() {
     accepted: 0,
     rejected: 0,
     expired: 0,
+    converted: 0,
   });
 
   useEffect(() => {
@@ -187,6 +190,7 @@ export default function QuotesPage() {
         accepted: list.filter((x) => x.status === "accepted").length,
         rejected: list.filter((x) => x.status === "rejected").length,
         expired: list.filter((x) => x.status === "expired").length,
+        converted: list.filter((x) => x.status === "converted").length,
       };
       setStats(stats);
     } catch (err) {
@@ -262,6 +266,7 @@ export default function QuotesPage() {
             <option value="accepted">Accepted</option>
             <option value="rejected">Rejected</option>
             <option value="expired">Expired</option>
+            <option value="converted">Converted</option>
           </select>
 
           <Link
@@ -274,7 +279,7 @@ export default function QuotesPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
         <SummaryCard icon={FileText} label="Total" value={stats.total} color="bg-gray-500" />
         <SummaryCard icon={FileText} label="Draft" value={stats.draft} color="bg-gray-400" />
         <SummaryCard icon={Send} label="Sent" value={stats.sent} color="bg-blue-500" />
@@ -286,6 +291,12 @@ export default function QuotesPage() {
         />
         <SummaryCard icon={XCircle} label="Rejected" value={stats.rejected} color="bg-red-500" />
         <SummaryCard icon={Clock} label="Expired" value={stats.expired} color="bg-orange-500" />
+        <SummaryCard
+          icon={Repeat2}
+          label="Converted"
+          value={stats.converted}
+          color="bg-purple-500"
+        />
       </div>
 
       {/* Table */}

@@ -154,7 +154,7 @@ export const deleteQuote = async (req, res) => {
 export const updateQuoteStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const validStatuses = ["draft", "sent", "accepted", "rejected", "expired"];
+    const validStatuses = ["draft", "sent", "accepted", "rejected", "expired", "converted"];
 
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
@@ -175,7 +175,7 @@ export const updateQuoteStatus = async (req, res) => {
 // ✅ SUMMARY
 export const getQuoteSummary = async (req, res) => {
   try {
-    const statuses = ["draft", "sent", "accepted", "rejected", "expired"];
+    const statuses = ["draft", "sent", "accepted", "rejected", "expired", "converted"];
 
     const counts = await Promise.all(statuses.map((s) => Quote.count({ where: { status: s } })));
 
@@ -188,6 +188,7 @@ export const getQuoteSummary = async (req, res) => {
       accepted: counts[2],
       rejected: counts[3],
       expired: counts[4],
+      converted: counts[5],
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -202,13 +203,19 @@ export const convertQuoteToOrder = async (req, res) => {
     });
     if (!quote) return res.status(404).json({ error: "Quote not found" });
 
+    // ❌ ป้องกัน convert ซ้ำ
+    if (quote.status === "converted") {
+      return res.status(400).json({ error: "Quote has already been converted to order" });
+    }
+
+    // ❌ ต้องเป็น accepted ก่อนเท่านั้น
     if (quote.status !== "accepted") {
       return res.status(400).json({
         error: "Quote must be accepted before converting to order",
       });
     }
 
-    // 1) สร้าง Order หลัก
+    // ✅ 1) สร้าง Order หลัก
     const order = await models.Order.create({
       customer_name: quote.customer_name,
       customer_email: quote.customer_email,
@@ -217,7 +224,7 @@ export const convertQuoteToOrder = async (req, res) => {
       order_status: "pending",
     });
 
-    // 2) Loop สร้าง OrderItems จาก QuoteItems
+    // ✅ 2) สร้าง OrderItems จาก QuoteItems
     for (const qi of quote.QuoteItems) {
       await models.OrderItem.create({
         order_id: order.id,
@@ -228,16 +235,21 @@ export const convertQuoteToOrder = async (req, res) => {
       });
     }
 
-    // 3) อัปเดตสถานะ quote → converted
-    await quote.update({ status: "converted" }).catch(() => {});
+    // ✅ 3) อัปเดตสถานะ quote → converted
+    await quote.update({ status: "converted" });
 
-    // 4) ดึง order พร้อม items กลับมา
+    // ✅ 4) ดึง order ที่สร้างกลับมา (พร้อม items)
     const newOrder = await models.Order.findByPk(order.id, {
       include: [{ model: models.OrderItem, include: [models.Product] }],
     });
 
-    res.json({ message: "Quote converted to order", order: newOrder });
+    res.json({
+      message: "Quote converted to order successfully",
+      quote_id: quote.id,
+      order: newOrder,
+    });
   } catch (err) {
+    console.error("convertQuoteToOrder error:", err);
     res.status(500).json({ error: err.message });
   }
 };
