@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import Image from "next/image";
-import { Edit, ArrowLeft } from "lucide-react";
+import { Edit, ArrowLeft, Trash2 } from "lucide-react";
 
 export default function ViewProductPage() {
   const router = useRouter();
   const { id } = useParams();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   // ✅ ดึงข้อมูลสินค้า
   useEffect(() => {
@@ -28,10 +29,27 @@ export default function ViewProductPage() {
     fetchProduct();
   }, [id]);
 
+  // ✅ ลบสินค้า
+  const handleDelete = async () => {
+    if (!confirm("⚠️ Are you sure you want to delete this product?")) return;
+    try {
+      setDeleting(true);
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Delete failed");
+      alert("✅ Product deleted successfully!");
+      router.push("/admin/products");
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) return <p className="p-6">Loading...</p>;
   if (!product) return <p className="p-6 text-gray-500">Product not found.</p>;
 
-  // ✅ Format ตัวเลขสวย ๆ
   const formatTHB = (n) =>
     Number(n || 0).toLocaleString("th-TH", {
       minimumFractionDigits: 2,
@@ -56,6 +74,14 @@ export default function ViewProductPage() {
             <Edit className="h-4 w-4" /> Edit
           </button>
           <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 rounded bg-red-600 px-4 py-2 text-sm text-white shadow transition hover:bg-red-700 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            {deleting ? "Deleting..." : "Delete"}
+          </button>
+          <button
             onClick={() => router.push("/admin/products")}
             className="flex items-center gap-2 rounded border px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-100"
           >
@@ -67,22 +93,22 @@ export default function ViewProductPage() {
       {/* Product Card */}
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-6 md:flex-row">
-          {/* Product Image */}
           <div className="w-full md:w-1/3">
             <div className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50">
               <Image
                 src={
-                  product.image_path?.startsWith("http")
-                    ? product.image_path
-                    : product.image_path
-                      ? `/uploads/${product.image_path}`
-                      : "/images/placeholder.png"
+                  product.image_path && product.image_path.trim() !== ""
+                    ? product.image_path.startsWith("http")
+                      ? product.image_path
+                      : product.image_path.startsWith("/uploads")
+                        ? product.image_path
+                        : `/uploads/${product.image_path}`
+                    : "/images/placeholder.png"
                 }
                 alt={product.name}
                 fill
-                sizes="(max-width: 768px) 100vw, 33vw"
+                sizes="(max-width:768px) 100vw, 33vw"
                 className="object-cover"
-                unoptimized
               />
             </div>
           </div>
