@@ -1,12 +1,10 @@
-// apps/web/middleware.js
 import { NextResponse } from "next/server";
 
-// ทำงานเฉพาะ /admin/** เท่านั้น
 export const config = {
   matcher: ["/admin/:path*"],
 };
 
-// Helpers
+// 🔹 Helper: decode JWT payload
 function decodeJwtPayload(token) {
   try {
     const part = token.split(".")[1];
@@ -17,13 +15,16 @@ function decodeJwtPayload(token) {
     return null;
   }
 }
+
+// 🔹 Helper: ตรวจหมดอายุ + สิทธิ์
 const isExpired = (p) => !p || typeof p.exp !== "number" || p.exp <= Math.floor(Date.now() / 1000);
 const allowedRole = (p) => p && ["admin", "staff"].includes(p.role);
 
 export function middleware(req) {
   const { pathname } = req.nextUrl;
+  const token = req.cookies.get("accessToken")?.value;
 
-  // ---- Allowlist: อย่าแตะไฟล์ระบบ/สาธารณะ/ API
+  // ✅ allow static assets / api / favicon
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -33,27 +34,25 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
-  const token = req.cookies.get("accessToken")?.value;
+  // ✅ allow login page
+  if (pathname === "/admin/login") return NextResponse.next();
 
-  if (pathname === "/admin/login") {
-    if (!token) return NextResponse.next();
-
-    const p = decodeJwtPayload(token);
-    if (!p || isExpired(p) || !allowedRole(p)) {
-      return NextResponse.next();
-    }
-    // มี token ใช้ได้แล้ว แต่ดันเข้าหน้า login → เด้งไปแดชบอร์ด
-    return NextResponse.redirect(new URL("/admin/dashboard", req.url));
-  }
-
-  // ----- หน้า /admin อื่น ๆ ต้องมี token + role ถูกต้อง
+  // 🚫 ถ้าไม่มี token → กลับหน้า login
   if (!token) {
     return NextResponse.redirect(new URL("/admin/login", req.url));
   }
-  const payload = decodeJwtPayload(token);
-  if (isExpired(payload) || !allowedRole(payload)) {
+
+  const p = decodeJwtPayload(token);
+  if (isExpired(p) || !allowedRole(p)) {
     return NextResponse.redirect(new URL("/admin/login", req.url));
   }
 
+  // 🚫 staff ห้ามเข้า /admin/staffs/**
+  if (pathname.startsWith("/admin/staffs") && p.role === "staff") {
+    // เด้งกลับ dashboard
+    return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+  }
+
+  // ✅ ผ่านได้ทั้งหมด
   return NextResponse.next();
 }
