@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function QuoteDetailPage() {
   const params = useParams();
@@ -39,6 +40,13 @@ export default function QuoteDetailPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Quotes", href: "/admin/quotes" },
+              { label: `View Quote #${id}` },
+            ]}
+          />
           <h1 className="text-2xl font-bold">Quote Detail</h1>
           <p className="text-sm text-gray-500">Quote ID: QT-{quote.id}</p>
         </div>

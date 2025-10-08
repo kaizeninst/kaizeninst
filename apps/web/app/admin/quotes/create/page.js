@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption } from "@headlessui/react";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function CreateQuotePage() {
   const router = useRouter();
@@ -110,6 +111,13 @@ export default function CreateQuotePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Quotes", href: "/admin/quotes" },
+              { label: "Create Quote" },
+            ]}
+          />
           <h1 className="text-2xl font-bold">Create Quote</h1>
           <p className="text-sm text-gray-500">Fill customer & product details</p>
         </div>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption } from "@headlessui/react";
+import Breadcrumb from "@/components/common/Breadcrumb";
 
 export default function EditQuotePage() {
   const { id } = useParams();
@@ -118,6 +119,13 @@ export default function EditQuotePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          <Breadcrumb
+            items={[
+              { label: "Dashboard", href: "/admin/dashboard" },
+              { label: "Quotes", href: "/admin/quotes" },
+              { label: `Edit Quote #${id}` },
+            ]}
+          />
           <h1 className="text-2xl font-bold">Edit Quote</h1>
           <p className="text-sm text-gray-500">Update customer & product details</p>
         </div>
