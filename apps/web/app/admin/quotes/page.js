@@ -35,7 +35,7 @@ function SummaryCard({ icon: Icon, label, value, color }) {
 
 /* ---------------------- Status Dropdown ---------------------- */
 function StatusDropdown({ value, onChange }) {
-  const statuses = ["draft", "sent", "accepted", "rejected", "expired", "converted"];
+  const statuses = ["draft", "sent", "accepted", "rejected", "expired"];
   const colors = {
     draft: "text-gray-700",
     sent: "text-blue-600",
@@ -112,7 +112,13 @@ function QuoteRow({ q, router, onStatusChange, onConvert }) {
         })}
       </td>
       <td>
-        <StatusDropdown value={q.status} onChange={(v) => onStatusChange(q.id, v)} />
+        {q.status === "converted" ? (
+          <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700">
+            Converted
+          </span>
+        ) : (
+          <StatusDropdown value={q.status} onChange={(v) => onStatusChange(q.id, v)} />
+        )}
       </td>
       <td className="table-actions text-center">
         <div className="flex justify-center gap-2 sm:justify-start">
