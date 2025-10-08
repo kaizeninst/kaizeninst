@@ -2,15 +2,19 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Breadcrumb from "@/components/common/Breadcrumb"; // ✅ import breadcrumb component
 
 export default function OrderDetailPage() {
-  const params = useParams();
+  const { id } = useParams();
   const router = useRouter();
-  const { id } = params;
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (id) fetchOrder();
+  }, [id]);
 
   async function fetchOrder() {
     try {
@@ -48,10 +52,7 @@ export default function OrderDetailPage() {
     if (!confirm("Are you sure you want to delete this order?")) return;
     setDeleting(true);
     try {
-      await fetch(`/api/orders/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      await fetch(`/api/orders/${id}`, { method: "DELETE", credentials: "include" });
       router.push("/admin/orders");
     } catch (err) {
       console.error("Delete failed:", err);
@@ -59,26 +60,25 @@ export default function OrderDetailPage() {
     }
   }
 
-  useEffect(() => {
-    if (id) fetchOrder();
-  }, [id]);
-
   if (loading) return <p className="p-6">Loading...</p>;
   if (!order) return <p className="p-6 text-red-500">Order not found</p>;
 
+  /* ---------- UI ---------- */
   return (
     <div className="p-6">
+      {/* ✅ Breadcrumb */}
+      <Breadcrumb items={[{ label: "Orders", href: "/admin/orders" }, { label: `Order #${id}` }]} />
+
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 mt-2 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/admin/orders" className="text-sm text-blue-600 hover:underline">
-            ← Back to Orders
-          </Link>
-          <h1 className="mt-2 text-2xl font-bold">Order Details</h1>
-          <p className="text-gray-500">Order ID: OD-{order.id}</p>
+          <h1 className="text-2xl font-semibold">Order Details</h1>
+          <p className="text-gray-500">
+            Order ID: <span className="font-medium text-gray-700">OD-{order.id}</span>
+          </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => router.push(`/admin/orders/${id}/edit`)}
             className="rounded bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600"
@@ -95,34 +95,24 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
+      {/* Info Grid */}
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Customer Info */}
-        <div className="rounded border bg-white p-4 shadow-sm md:col-span-2">
-          <h2 className="mb-3 font-semibold">Customer Information</h2>
-          <p>
-            <strong>Name:</strong> {order.customer_name}
-          </p>
-          <p>
-            <strong>Email:</strong> {order.customer_email}
-          </p>
-          <p>
-            <strong>Phone:</strong> {order.phone || "-"}
-          </p>
-          <p>
-            <strong>Shipping Address:</strong> {order.shipping_address || "-"}
-          </p>
-        </div>
+        <Card title="Customer Information" className="md:col-span-2">
+          <Info label="Name" value={order.customer_name} />
+          <Info label="Email" value={order.customer_email} />
+          <Info label="Phone" value={order.phone || "-"} />
+          <Info label="Shipping Address" value={order.shipping_address || "-"} />
+        </Card>
 
-        {/* Status */}
-        <div className="rounded border bg-white p-4 shadow-sm">
-          <h2 className="mb-3 font-semibold">Order Status</h2>
-          <p className="mb-2">
-            <strong>Current Status:</strong>
-          </p>
+        <Card title="Order Status">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">Order Status</span>
+            <StatusBadge status={order.order_status} />
+          </div>
           <select
             value={order.order_status}
             onChange={(e) => updateOrderStatus(e.target.value)}
-            className="mb-3 w-full rounded border px-2 py-1 text-sm"
+            className="mb-4 w-full rounded border px-2 py-1 text-sm"
           >
             <option value="pending">Pending</option>
             <option value="processing">Processing</option>
@@ -130,76 +120,99 @@ export default function OrderDetailPage() {
             <option value="delivered">Delivered</option>
           </select>
 
-          <p className="mb-2">
-            <strong>Payment Status:</strong>
-          </p>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-600">Payment</span>
+            <PaymentBadge status={order.payment_status} />
+          </div>
           <select
             value={order.payment_status}
             onChange={(e) => updatePaymentStatus(e.target.value)}
-            className="mb-3 w-full rounded border px-2 py-1 text-sm"
+            className="mb-4 w-full rounded border px-2 py-1 text-sm"
           >
             <option value="unpaid">Unpaid</option>
             <option value="paid">Paid</option>
           </select>
 
-          <p>
-            <strong>Order Date:</strong> {new Date(order.created_at).toLocaleDateString()}
-          </p>
-          <p>
-            <strong>Shipping Method:</strong> {order.shipping_method || "-"}
-          </p>
-        </div>
+          <Info label="Order Date" value={new Date(order.created_at).toLocaleDateString()} />
+          <Info label="Shipping Method" value={order.shipping_method || "-"} />
+        </Card>
       </div>
 
       {/* Items */}
-      <div className="mt-6 rounded border bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">Order Items</h2>
+      <Card title="Order Items" className="mt-6">
         <div className="divide-y">
           {order.OrderItems?.map((item) => (
-            <div key={item.id} className="flex justify-between py-2">
+            <div
+              key={item.id}
+              className="flex flex-col justify-between py-3 sm:flex-row sm:items-center"
+            >
               <div>
                 <p className="font-medium">{item.Product?.name}</p>
                 <p className="text-xs text-gray-500">
-                  Quantity: {item.quantity} × Unit Price: {item.unit_price}
+                  Qty {item.quantity} × THB {Number(item.unit_price || 0).toFixed(2)}
                 </p>
               </div>
-              <div className="font-semibold text-red-600">
+              <div className="text-right font-semibold text-red-600">
                 THB {Number(item.line_total || 0).toFixed(2)}
               </div>
             </div>
           ))}
         </div>
-        <div className="mt-3 text-right font-bold text-red-600">
-          Total Order Value: THB {Number(order.total || 0).toFixed(2)}
+        <div className="mt-4 text-right text-lg font-bold text-red-600">
+          Total: THB {Number(order.total || 0).toFixed(2)}
         </div>
-      </div>
+      </Card>
 
       {/* Tracking & Notes */}
-      <div className="mt-6 rounded border bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">Tracking & Notes</h2>
-        <p>
-          <strong>Tracking Number:</strong> {order.tracking_number || "-"}
-        </p>
-        <p>
-          <strong>Order Notes:</strong> {order.notes || "-"}
-        </p>
-      </div>
-
-      {/* Actions */}
-      <div className="mt-6 rounded border bg-white p-4 shadow-sm">
-        <h2 className="mb-3 font-semibold">Actions</h2>
-        <div className="flex flex-col gap-2">
-          <button className="rounded border px-3 py-1 text-sm hover:bg-gray-100">
-            Email Customer
-          </button>
-          <button className="rounded border px-3 py-1 text-sm hover:bg-gray-100">
-            Print Invoice
-          </button>
-          <button className="rounded border px-3 py-1 text-sm text-red-600 hover:bg-red-50">
-            Process Refund
-          </button>
-        </div>
-      </div>
+      <Card title="Tracking & Notes" className="mt-6">
+        <Info label="Tracking Number" value={order.tracking_number || "-"} />
+        <Info label="Order Notes" value={order.notes || "-"} />
+      </Card>
     </div>
+  );
+}
+
+/* ---------- Subcomponents ---------- */
+function Card({ title, children, className = "" }) {
+  return (
+    <div className={`rounded border border-gray-200 bg-white p-4 shadow-sm ${className}`}>
+      <h2 className="mb-3 text-sm font-semibold text-gray-700">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function Info({ label, value }) {
+  return (
+    <p className="mb-1 text-sm">
+      <span className="font-medium text-gray-700">{label}:</span>{" "}
+      <span className="text-gray-600">{value}</span>
+    </p>
+  );
+}
+
+function StatusBadge({ status }) {
+  const colors = {
+    pending: "bg-yellow-100 text-yellow-800",
+    processing: "bg-gray-100 text-gray-700",
+    shipped: "bg-blue-100 text-blue-700",
+    delivered: "bg-green-100 text-green-700",
+  };
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-medium ${colors[status] || ""}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  );
+}
+
+function PaymentBadge({ status }) {
+  const colors = {
+    paid: "bg-green-100 text-green-700",
+    unpaid: "bg-red-100 text-red-700",
+  };
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-medium ${colors[status] || ""}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
   );
 }
