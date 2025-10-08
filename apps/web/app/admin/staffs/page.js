@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, Edit, Trash } from "lucide-react";
+import { Plus, Search, Edit, Trash, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -55,6 +55,10 @@ export default function StaffManagementPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // 🔹 Temporary password popup
+  const [tempPassword, setTempPassword] = useState(null);
+  const [copied, setCopied] = useState(false);
+
   // 🔹 debounce search
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
@@ -107,6 +111,30 @@ export default function StaffManagementPage() {
     }
   };
 
+  // 🔹 reset password
+  const handleResetPassword = async (id) => {
+    if (!confirm("Generate a new temporary password for this staff?")) return;
+    try {
+      const res = await fetch(`/api/staff/${id}/reset-password`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reset password");
+      setTempPassword(data.tempPassword);
+      setCopied(false);
+    } catch (err) {
+      alert(`❌ ${err.message}`);
+    }
+  };
+
+  const handleCopy = () => {
+    if (tempPassword) {
+      navigator.clipboard.writeText(tempPassword);
+      setCopied(true);
+    }
+  };
+
   /* ---------- UI ---------- */
   return (
     <div className="w-full p-4 sm:p-6">
@@ -142,6 +170,32 @@ export default function StaffManagementPage() {
           </Link>
         </div>
       </div>
+
+      {/* Temporary password popup */}
+      {tempPassword && (
+        <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 p-5 text-center shadow-sm">
+          <h2 className="text-lg font-semibold text-yellow-800">Temporary Password (shown once)</h2>
+          <p className="mt-3 rounded bg-white px-4 py-3 font-mono text-lg font-semibold text-gray-700 shadow">
+            {tempPassword}
+          </p>
+
+          {!copied ? (
+            <button
+              onClick={handleCopy}
+              className="mt-4 rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+            >
+              Copy to Clipboard
+            </button>
+          ) : (
+            <button
+              onClick={() => setTempPassword(null)}
+              className="mt-4 rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+            >
+              ✅ Close
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Table / Skeleton */}
       {loading ? (
@@ -202,6 +256,14 @@ export default function StaffManagementPage() {
                     {/* Actions */}
                     <td className="table-actions text-center">
                       <div className="flex justify-center gap-2 sm:justify-start">
+                        <button
+                          onClick={() => handleResetPassword(s.id)}
+                          className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+                          title="Reset Password"
+                        >
+                          <KeyRound className="h-4 w-4 text-yellow-600" />
+                        </button>
+
                         <button
                           onClick={() => router.push(`/admin/staffs/${s.id}/edit`)}
                           className="rounded bg-gray-100 p-2 hover:bg-gray-200"
