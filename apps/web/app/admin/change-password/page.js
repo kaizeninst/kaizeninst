@@ -57,7 +57,7 @@ export default function StaffChangePasswordPage() {
           <h1 className="text-xl font-semibold text-green-700">Password Changed Successfully 🎉</h1>
           <p className="mt-3 text-sm text-gray-600">You can now use your new password to log in.</p>
           <button
-            onClick={() => (window.location.href = "/staff/login")}
+            onClick={() => (window.location.href = "/admin-login")}
             className="mt-6 w-full rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
           >
             Go to Login
