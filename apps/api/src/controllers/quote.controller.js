@@ -62,6 +62,7 @@ export const getAllQuotes = async (req, res) => {
       limit,
       order: [["created_at", "DESC"]],
       include: [{ model: QuoteItem, include: [Product] }],
+      distinct: true,
     });
 
     res.json({
