@@ -4,27 +4,44 @@ export const config = {
   matcher: ["/admin/:path*"],
 };
 
-// 🔹 Helper: decode JWT payload
+/* -------------------------------------------------------------
+ * Helper: Decode JWT payload safely (Base64URL → JSON)
+ * ------------------------------------------------------------- */
 function decodeJwtPayload(token) {
   try {
-    const part = token.split(".")[1];
-    if (!part) return null;
-    const json = Buffer.from(part.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
-    return JSON.parse(json);
+    const encodedPart = token.split(".")[1];
+    if (!encodedPart) return null;
+    const jsonString = Buffer.from(
+      encodedPart.replace(/-/g, "+").replace(/_/g, "/"),
+      "base64"
+    ).toString("utf8");
+    return JSON.parse(jsonString);
   } catch {
     return null;
   }
 }
 
-// 🔹 Helper: ตรวจหมดอายุ + สิทธิ์
-const isExpired = (p) => !p || typeof p.exp !== "number" || p.exp <= Math.floor(Date.now() / 1000);
-const allowedRole = (p) => p && ["admin", "staff"].includes(p.role);
+/* -------------------------------------------------------------
+ * Helper: Validate expiration and role permissions
+ * ------------------------------------------------------------- */
+function isTokenExpired(payload) {
+  if (!payload || typeof payload.exp !== "number") return true;
+  const currentTimeInSeconds = Math.floor(Date.now() / 1000);
+  return payload.exp <= currentTimeInSeconds;
+}
 
-export function middleware(req) {
-  const { pathname } = req.nextUrl;
-  const token = req.cookies.get("accessToken")?.value;
+function isAllowedRole(payload) {
+  return payload && ["admin", "staff"].includes(payload.role);
+}
 
-  // ✅ allow static assets / api / favicon
+/* -------------------------------------------------------------
+ * Main Middleware: Protect admin routes
+ * ------------------------------------------------------------- */
+export function middleware(request) {
+  const { pathname } = request.nextUrl;
+  const accessToken = request.cookies.get("accessToken")?.value;
+
+  // ✅ Allow public assets, API routes, and static files
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -34,25 +51,35 @@ export function middleware(req) {
     return NextResponse.next();
   }
 
-  // ✅ allow login page
-  if (pathname === "/admin/login") return NextResponse.next();
-
-  // 🚫 ถ้าไม่มี token → กลับหน้า login
-  if (!token) {
-    return NextResponse.redirect(new URL("/admin/login", req.url));
+  // ✅ Allow /admin/login without authentication
+  if (pathname === "/admin/login") {
+    return NextResponse.next();
   }
 
-  const p = decodeJwtPayload(token);
-  if (isExpired(p) || !allowedRole(p)) {
-    return NextResponse.redirect(new URL("/admin/login", req.url));
+  // 🚫 No token → redirect to login
+  if (!accessToken) {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
-  // 🚫 staff ห้ามเข้า /admin/staffs/**
-  if (pathname.startsWith("/admin/staffs") && p.role === "staff") {
-    // เด้งกลับ dashboard
-    return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+  // ✅ Decode and verify token
+  const payload = decodeJwtPayload(accessToken);
+  if (isTokenExpired(payload) || !isAllowedRole(payload)) {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
-  // ✅ ผ่านได้ทั้งหมด
+  // 🚫 Restrict staff from accessing /admin/staffs/**
+  if (pathname.startsWith("/admin/staffs") && payload.role === "staff") {
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+  }
+
+  // 🔁 Force staff with must_change_password=true to /admin/change-password
+  if (payload.role === "staff" && payload.must_change_password === true) {
+    const isAlreadyOnChangePasswordPage = pathname.startsWith("/admin/change-password");
+    if (!isAlreadyOnChangePasswordPage) {
+      return NextResponse.redirect(new URL("/admin/change-password", request.url));
+    }
+  }
+
+  // ✅ Allow access
   return NextResponse.next();
 }
