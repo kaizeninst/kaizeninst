@@ -1,255 +1,348 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, CheckCircle, XCircle, Clock, Truck, Eye } from "lucide-react";
+import {
+  FileText,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Truck,
+  Eye,
+  Plus,
+  Search,
+  CreditCard,
+  Package,
+} from "lucide-react";
+import Breadcrumb from "@/components/common/Breadcrumb";
+import Pagination from "@/components/common/Pagination";
 
-export default function OrderManagementPage() {
+/* ---------------------- Summary Card ---------------------- */
+function SummaryCard({ icon: Icon, label, value, color }) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:shadow-md">
+      <div className={`flex h-10 w-10 items-center justify-center rounded-md ${color}`}>
+        <Icon className="h-5 w-5 text-white" />
+      </div>
+      <div>
+        <p className="text-sm text-gray-600">{label}</p>
+        <p className="text-lg font-semibold">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------- Status Dropdown ---------------------- */
+function StatusDropdown({ value, onChange }) {
+  const statuses = ["pending", "processing", "shipped", "delivered"];
+  const colors = {
+    pending: "text-yellow-600",
+    processing: "text-gray-700",
+    shipped: "text-blue-700",
+    delivered: "text-green-700",
+  };
+  return (
+    <select
+      value={value || "pending"}
+      onChange={(e) => onChange(e.target.value)}
+      className={`rounded-md border border-gray-300 px-2 py-1 text-xs font-medium focus:ring focus:ring-red-100 ${colors[value]}`}
+    >
+      {statuses.map((s) => (
+        <option key={s} value={s}>
+          {s.charAt(0).toUpperCase() + s.slice(1)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/* ---------------------- Payment Dropdown ---------------------- */
+function PaymentDropdown({ value, onChange }) {
+  const statuses = ["unpaid", "paid"];
+  const colors = {
+    unpaid: "text-red-600",
+    paid: "text-green-700",
+  };
+  return (
+    <select
+      value={value || "unpaid"}
+      onChange={(e) => onChange(e.target.value)}
+      className={`rounded-md border border-gray-300 px-2 py-1 text-xs font-medium focus:ring focus:ring-red-100 ${colors[value]}`}
+    >
+      {statuses.map((s) => (
+        <option key={s} value={s}>
+          {s.charAt(0).toUpperCase() + s.slice(1)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/* ---------------------- Table Skeleton ---------------------- */
+function TableSkeleton() {
+  return (
+    <div className="table-container w-full animate-pulse">
+      <table className="table">
+        <thead>
+          <tr>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <th key={i}>
+                <div className="h-4 w-16 rounded bg-gray-200"></div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <tr key={i}>
+              {Array.from({ length: 8 }).map((_, j) => (
+                <td key={j}>
+                  <div className="h-5 w-full rounded bg-gray-100"></div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ---------------------- Row ---------------------- */
+function OrderRow({ o, router, onStatusChange, onPaymentChange }) {
+  return (
+    <tr className="border-t transition hover:bg-gray-50">
+      <td className="font-medium">OD-{String(o.id).padStart(4, "0")}</td>
+      <td>
+        <div className="font-medium">{o.customer_name}</div>
+        <div className="text-xs text-gray-500">{o.customer_email}</div>
+      </td>
+      <td className="text-right font-semibold text-red-600">
+        THB{" "}
+        {Number(o.total || 0).toLocaleString("th-TH", {
+          minimumFractionDigits: 2,
+        })}
+      </td>
+      <td>
+        <PaymentDropdown value={o.payment_status} onChange={(v) => onPaymentChange(o.id, v)} />
+      </td>
+      <td>
+        <StatusDropdown value={o.order_status} onChange={(v) => onStatusChange(o.id, v)} />
+      </td>
+      <td className="text-gray-600">{new Date(o.created_at).toLocaleDateString()}</td>
+      <td className="table-actions text-center">
+        <button
+          onClick={() => router.push(`/admin/orders/${o.id}`)}
+          className="rounded bg-gray-100 p-2 hover:bg-gray-200"
+          title="View"
+        >
+          <Eye className="h-4 w-4 text-gray-700" />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+/* ---------------------- Main Page ---------------------- */
+export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState([]);
-  const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+  });
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+  });
 
-  async function fetchOrders() {
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const fetchOrders = async (p = page, s = debouncedSearch, f = filter, pay = paymentFilter) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await fetch(`/api/orders`, { credentials: "include" });
+      const res = await fetch(
+        `/api/orders?page=${p}&limit=10${
+          f !== "all" ? `&status=${f}` : ""
+        }${pay !== "all" ? `&payment=${pay}` : ""}&search=${encodeURIComponent(s)}`,
+        { credentials: "include" }
+      );
       const data = await res.json();
-      setOrders(data.data || []);
+      const list = data?.data || [];
+      setOrders(list);
+      setPagination(data?.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 });
+      setPage(data?.pagination?.page || p);
+
+      const stats = {
+        total: list.length,
+        pending: list.filter((x) => x.order_status === "pending").length,
+        processing: list.filter((x) => x.order_status === "processing").length,
+        shipped: list.filter((x) => x.order_status === "shipped").length,
+        delivered: list.filter((x) => x.order_status === "delivered").length,
+      };
+      setStats(stats);
     } catch (err) {
-      setError("Failed to load orders");
+      console.error("Error fetching orders:", err);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function fetchSummary() {
-    try {
-      const res = await fetch(`/api/orders/summary`, { credentials: "include" });
-      const data = await res.json();
-      setSummary(data);
-    } catch (err) {
-      console.error("Failed to load summary:", err);
-    }
-  }
+  useEffect(() => {
+    fetchOrders(1, debouncedSearch, filter, paymentFilter);
+  }, [debouncedSearch, filter, paymentFilter]);
 
-  async function updateStatus(id, newStatus) {
+  // 🔄 Update status
+  const handleStatusChange = async (id, newStatus) => {
     await fetch(`/api/orders/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ order_status: newStatus }),
     });
-    fetchOrders();
-    fetchSummary();
-  }
+    fetchOrders(page, debouncedSearch, filter);
+  };
 
-  useEffect(() => {
-    fetchOrders();
-    fetchSummary();
-  }, []);
-
-  async function updatePayment(id, newStatus) {
+  // 💰 Update payment
+  const handlePaymentChange = async (id, newStatus) => {
     await fetch(`/api/orders/${id}/payment`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ payment_status: newStatus }),
     });
-    fetchOrders();
-    fetchSummary();
-  }
+    fetchOrders(page, debouncedSearch, filter);
+  };
 
   return (
-    <div className="p-6">
+    <div className="w-full p-4 sm:p-6">
+      <Breadcrumb items={[{ label: "Dashboard", href: "/admin/dashboard" }, { label: "Orders" }]} />
+
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Order Management</h1>
-          <p className="text-sm text-gray-500">Manage and track customer orders</p>
+          <h1 className="text-foreground text-2xl font-semibold">Orders Management</h1>
+          <p className="text-secondary text-sm">Manage and track customer orders</p>
         </div>
-        <button
-          onClick={() => router.push("/admin/orders/create")}
-          className="flex items-center gap-2 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-        >
-          + Add Order
-        </button>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search orders..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="focus:border-primary w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:ring focus:ring-red-200 sm:w-64"
+            />
+          </div>
+
+          <select
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            className="focus:border-primary rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:ring focus:ring-red-100"
+          >
+            <option value="all">All Payments</option>
+            <option value="paid">Paid</option>
+            <option value="unpaid">Unpaid</option>
+          </select>
+
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="focus:border-primary rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:ring focus:ring-red-100"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+          </select>
+
+          <Link
+            href="/admin/orders/create"
+            className="add-btn bg-primary flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-white shadow transition hover:bg-red-700"
+          >
+            <Plus className="h-4 w-4" /> Add Order
+          </Link>
+        </div>
       </div>
 
-      {/* Summary cards */}
-      {summary ? (
-        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-5">
-          <SummaryCard
-            icon={<FileText size={20} className="text-blue-600" />}
-            label="Total Orders"
-            value={summary.total}
-            color="blue"
-          />
-          <SummaryCard
-            icon={<Clock size={20} className="text-yellow-600" />}
-            label="Pending"
-            value={summary.pending}
-            color="yellow"
-          />
-          <SummaryCard
-            icon={<CheckCircle size={20} className="text-gray-600" />}
-            label="Processing"
-            value={summary.processing}
-            color="gray"
-          />
-          <SummaryCard
-            icon={<Truck size={20} className="text-blue-600" />}
-            label="Shipped"
-            value={summary.shipped}
-            color="blue"
-          />
-          <SummaryCard
-            icon={<XCircle size={20} className="text-green-600" />}
-            label="Delivered"
-            value={summary.delivered}
-            color="green"
-          />
-        </div>
-      ) : (
-        <p className="mb-6 text-sm text-gray-500">Loading summary...</p>
-      )}
+      {/* Summary Cards */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <SummaryCard icon={FileText} label="Total" value={stats.total} color="bg-gray-500" />
+        <SummaryCard icon={Clock} label="Pending" value={stats.pending} color="bg-yellow-500" />
+        <SummaryCard
+          icon={Package}
+          label="Processing"
+          value={stats.processing}
+          color="bg-gray-400"
+        />
+        <SummaryCard icon={Truck} label="Shipped" value={stats.shipped} color="bg-blue-500" />
+        <SummaryCard
+          icon={CheckCircle}
+          label="Delivered"
+          value={stats.delivered}
+          color="bg-green-500"
+        />
+      </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg bg-white shadow">
-        <table className="w-full border-collapse text-left text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="p-3">Order ID</th>
-              <th className="p-3">Customer</th>
-              <th className="p-3">Total</th>
-              <th className="p-3">Payment</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Date</th>
-              <th className="p-3 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="7" className="p-6 text-center text-gray-500">
-                  Loading...
-                </td>
-              </tr>
-            ) : error ? (
-              <tr>
-                <td colSpan="7" className="p-6 text-center text-red-500">
-                  {error}
-                </td>
-              </tr>
-            ) : orders.length === 0 ? (
-              <tr>
-                <td colSpan="7" className="p-6 text-center text-gray-500">
-                  No orders found
-                </td>
-              </tr>
-            ) : (
-              orders.map((o) => (
-                <tr key={o.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">OD-{o.id}</td>
-                  <td className="p-3">
-                    <div className="font-medium">{o.customer_name}</div>
-                    <div className="text-xs text-gray-500">{o.customer_email}</div>
-                  </td>
-                  <td className="p-3 font-semibold text-red-600">
-                    THB {Number(o.total).toFixed(2)}
-                  </td>
-                  <td className="p-3">
-                    <PaymentBadge
-                      value={o.payment_status}
-                      onChange={(val) => updatePayment(o.id, val)}
-                    />
-                  </td>
-                  <td className="p-3">
-                    <StatusBadge
-                      value={o.order_status}
-                      onChange={(val) => updateStatus(o.id, val)}
-                    />
-                  </td>
-                  <td className="p-3">{new Date(o.created_at).toLocaleDateString()}</td>
-                  <td className="p-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`/admin/orders/${o.id}`}
-                        className="flex items-center gap-1 rounded bg-gray-100 px-3 py-1 text-xs hover:bg-gray-200"
-                      >
-                        <Eye size={14} /> View
-                      </Link>
-                    </div>
-                  </td>
+      {loading ? (
+        <TableSkeleton />
+      ) : orders.length === 0 ? (
+        <p className="text-gray-500">No orders found.</p>
+      ) : (
+        <>
+          <div className="table-container w-full">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Customer</th>
+                  <th>Total</th>
+                  <th>Payment</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Action</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <OrderRow
+                    key={o.id}
+                    o={o}
+                    router={router}
+                    onStatusChange={handleStatusChange}
+                    onPaymentChange={handlePaymentChange}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Pagination
+            pagination={pagination}
+            page={page}
+            onPageChange={(newPage) => fetchOrders(newPage, debouncedSearch, filter)}
+          />
+        </>
+      )}
     </div>
-  );
-}
-
-/* Summary Card */
-function SummaryCard({ icon, label, value, color }) {
-  const styles = {
-    blue: "bg-blue-100 text-blue-600",
-    gray: "bg-gray-100 text-gray-600",
-    green: "bg-green-100 text-green-600",
-    red: "bg-red-100 text-red-600",
-    yellow: "bg-yellow-100 text-yellow-600",
-  };
-  return (
-    <div className="flex items-center justify-between rounded-lg border bg-white p-4 shadow-sm">
-      <div className={`flex h-12 w-12 items-center justify-center rounded ${styles[color]}`}>
-        {icon}
-      </div>
-      <div className="text-right">
-        <div className="text-sm text-gray-600">{label}</div>
-        <div className="text-xl font-bold text-black">{value}</div>
-      </div>
-    </div>
-  );
-}
-
-/* Status Badge */
-function StatusBadge({ value, onChange }) {
-  const colors = {
-    pending: "bg-yellow-100 text-yellow-700",
-    processing: "bg-gray-100 text-gray-700",
-    shipped: "bg-blue-100 text-blue-700",
-    delivered: "bg-green-100 text-green-700",
-  };
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`rounded border px-2 py-1 text-xs ${colors[value]} focus:outline-none`}
-    >
-      <option value="pending">Pending</option>
-      <option value="processing">Processing</option>
-      <option value="shipped">Shipped</option>
-      <option value="delivered">Delivered</option>
-    </select>
-  );
-}
-
-/* Payment Badge */
-function PaymentBadge({ value, onChange }) {
-  const colors = {
-    paid: "bg-green-100 text-green-700",
-    unpaid: "bg-red-100 text-red-700",
-  };
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`rounded border px-2 py-1 text-xs ${colors[value]} focus:outline-none`}
-    >
-      <option value="unpaid">Unpaid</option>
-      <option value="paid">Paid</option>
-    </select>
   );
 }
