@@ -20,19 +20,16 @@ export default function StaffChangePasswordPage() {
     e.preventDefault();
     setError("");
 
-    if (!form.oldPassword || !form.newPassword || !form.confirmPassword) {
+    if (!form.oldPassword || !form.newPassword || !form.confirmPassword)
       return setError("All fields are required.");
-    }
-    if (form.newPassword !== form.confirmPassword) {
-      return setError("New passwords do not match.");
-    }
+    if (form.newPassword !== form.confirmPassword) return setError("New passwords do not match.");
 
     setLoading(true);
     try {
       const res = await fetch("/api/staff/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // ✅ ต้องมี cookie JWT
+        credentials: "include",
         body: JSON.stringify({
           oldPassword: form.oldPassword,
           newPassword: form.newPassword,
@@ -41,6 +38,11 @@ export default function StaffChangePasswordPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to change password");
+
+      // clear token → force login again
+      document.cookie =
+        "accessToken=; Max-Age=0; path=/; sameSite=Lax; secure=" +
+        (window.location.protocol === "https:" ? "true" : "false");
 
       setSuccess(true);
     } catch (err) {
@@ -55,7 +57,9 @@ export default function StaffChangePasswordPage() {
       <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
         <div className="max-w-md rounded-lg border border-green-300 bg-white p-6 text-center shadow">
           <h1 className="text-xl font-semibold text-green-700">Password Changed Successfully 🎉</h1>
-          <p className="mt-3 text-sm text-gray-600">You can now use your new password to log in.</p>
+          <p className="mt-3 text-sm text-gray-600">
+            You can now log in again using your new password.
+          </p>
           <button
             onClick={() => (window.location.href = "/admin-login")}
             className="mt-6 w-full rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
@@ -81,7 +85,6 @@ export default function StaffChangePasswordPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Old Password */}
           <div>
             <label className="mb-1 block text-sm font-medium">Current Password</label>
             <input
@@ -94,7 +97,6 @@ export default function StaffChangePasswordPage() {
             />
           </div>
 
-          {/* New Password */}
           <div>
             <label className="mb-1 block text-sm font-medium">New Password</label>
             <input
@@ -107,7 +109,6 @@ export default function StaffChangePasswordPage() {
             />
           </div>
 
-          {/* Confirm Password */}
           <div>
             <label className="mb-1 block text-sm font-medium">Confirm New Password</label>
             <input
