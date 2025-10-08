@@ -2,33 +2,38 @@ import models from "../models/index.js";
 import { Op } from "sequelize";
 const { Order, OrderItem, Product } = models;
 
-// ✅ CREATE
+// ✅ CREATE ORDER
 export const createOrder = async (req, res) => {
   try {
     const { OrderItems, ...orderData } = req.body;
 
-    // 1) เช็คว่ามี OrderItems ส่งมาไหม
+    // 1️⃣ ตรวจว่ามีสินค้าไหม
     if (!OrderItems || !Array.isArray(OrderItems) || OrderItems.length === 0) {
       return res.status(400).json({ error: "OrderItems are required" });
     }
 
-    // 2) สร้าง order หลัก
-    const order = await Order.create(orderData);
+    // 2️⃣ สร้าง order หลักก่อน (ยังไม่รู้ total)
+    const order = await Order.create({ ...orderData, total: 0 });
 
-    // 3) loop OrderItems
+    let grandTotal = 0;
+
+    // 3️⃣ loop ทุก OrderItem
     for (const item of OrderItems) {
       const product = await Product.findByPk(item.product_id);
 
       if (!product) {
-        // ❌ ถ้า product_id ไม่เจอ → ยกเลิก order และ return error
         await order.destroy();
         return res.status(400).json({
           error: `Product with id ${item.product_id} not found`,
         });
       }
 
-      const unitPrice = parseFloat(item.unit_price || product.price || 0);
+      // ✅ ถ้า hide_price = true → ใช้ product.price ในฐานข้อมูลคำนวณจริง
+      const unitPrice =
+        item.unit_price > 0 ? parseFloat(item.unit_price) : parseFloat(product.price || 0);
+
       const lineTotal = (item.quantity || 1) * unitPrice;
+      grandTotal += lineTotal;
 
       await OrderItem.create({
         order_id: order.id,
@@ -39,13 +44,18 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // 4) ดึง order + items กลับมา
+    // 4️⃣ อัปเดตยอดรวมทั้งหมดใน order
+    order.total = grandTotal;
+    await order.save();
+
+    // 5️⃣ ดึงข้อมูลพร้อม items กลับไปให้ frontend
     const newOrder = await Order.findByPk(order.id, {
       include: [{ model: OrderItem, include: [Product] }],
     });
 
     res.status(201).json(newOrder);
   } catch (err) {
+    console.error("Create order error:", err);
     res.status(400).json({ error: err.message });
   }
 };
