@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Search, Edit, Trash, KeyRound } from "lucide-react";
+import { Plus, Search, Edit, Trash, KeyRound, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Breadcrumb from "@/components/common/Breadcrumb";
@@ -14,7 +14,7 @@ function TableSkeleton() {
       <table className="table">
         <thead>
           <tr>
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 7 }).map((_, i) => (
               <th key={i}>
                 <div className="h-4 w-16 rounded bg-gray-200"></div>
               </th>
@@ -24,7 +24,7 @@ function TableSkeleton() {
         <tbody>
           {Array.from({ length: 10 }).map((_, i) => (
             <tr key={i}>
-              {Array.from({ length: 6 }).map((_, j) => (
+              {Array.from({ length: 7 }).map((_, j) => (
                 <td key={j}>
                   <div className="h-5 w-full rounded bg-gray-100"></div>
                 </td>
@@ -214,6 +214,7 @@ export default function StaffManagementPage() {
                   <th>Username</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>Password</th>
                   <th>Last Login</th>
                   <th>Action</th>
                 </tr>
@@ -248,6 +249,19 @@ export default function StaffManagementPage() {
                       >
                         {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                       </span>
+                    </td>
+
+                    {/* Password change status */}
+                    <td>
+                      {s.must_change_password ? (
+                        <span className="flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">
+                          <ShieldAlert className="h-3.5 w-3.5" /> Must Change
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                          Normal
+                        </span>
+                      )}
                     </td>
 
                     {/* Last Login */}
