@@ -51,21 +51,21 @@ export function middleware(request) {
     return NextResponse.next();
   }
 
-  // ✅ Allow /admin/login without authentication
-  if (pathname === "/admin/login") {
+  // ✅ Allow /admin-login without authentication
+  if (pathname === "/admin-login") {
     return NextResponse.next();
   }
 
   // 🚫 No token → redirect to login
   if (!accessToken) {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+    return NextResponse.redirect(new URL("/admin-login", request.url));
   }
 
   // ✅ Decode and verify token
   const payload = decodeJwtPayload(accessToken);
   console.log("🔍 JWT Payload:", payload);
   if (isTokenExpired(payload) || !isAllowedRole(payload)) {
-    return NextResponse.redirect(new URL("/admin/login", request.url));
+    return NextResponse.redirect(new URL("/admin-login", request.url));
   }
 
   // 🚫 Restrict staff from accessing /admin/staffs/**
