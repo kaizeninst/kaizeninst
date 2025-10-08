@@ -106,7 +106,6 @@ export default function QuoteDetailPage() {
             <div key={item.id} className="flex justify-between rounded border p-3">
               <div>
                 <p className="font-medium">{item.Product?.name}</p>
-                <p className="text-xs text-gray-500">{item.Product?.description}</p>
                 <p className="text-xs text-gray-500">
                   Quantity: {item.quantity} | Unit Price: ${item.unit_price}
                 </p>
