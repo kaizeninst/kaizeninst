@@ -3,43 +3,67 @@ import models from "../models/index.js";
 import { verifyPassword } from "../utils/password.js";
 import { signAdminToken } from "../utils/jwt.js";
 
-// ✅ POST /api/auth/login
+const { Staff } = models;
+
+/**
+ * ✅ LOGIN (POST /api/auth/login)
+ * ตรวจสอบ username / password → ออก JWT token (มี must_change_password)
+ */
 export const login = async (req, res) => {
   try {
     const { username = "", password = "" } = req.body || {};
-    if (!username || !password)
-      return res.status(400).json({ error: "username and password are required" });
 
-    const staff = await models.Staff.findOne({ where: { username } });
-    if (!staff) return res.status(401).json({ error: "Invalid credentials" });
+    // 🔹 ตรวจว่ากรอกครบไหม
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required" });
+    }
 
-    // ต้องเป็น active + role admin หรือ staff
-    if (staff.status !== "active" || (staff.role !== "admin" && staff.role !== "staff")) {
+    // 🔹 หา staff จากฐานข้อมูล
+    const staff = await Staff.findOne({ where: { username } });
+    if (!staff) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    // 🔹 ตรวจสถานะ (ต้อง active และเป็น role ที่อนุญาต)
+    if (staff.status !== "active" || !["admin", "staff"].includes(staff.role)) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const ok = await verifyPassword(password, staff.password_hash || "");
-    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+    // 🔹 ตรวจรหัสผ่าน
+    const passwordOk = await verifyPassword(password, staff.password_hash || "");
+    if (!passwordOk) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
-    // สร้าง JWT
-    const token = signAdminToken({ id: staff.id, username: staff.username, role: staff.role });
+    // 🔹 โหลดข้อมูลล่าสุดจากฐานข้อมูล (เผื่อเพิ่ง reset password)
+    await staff.reload();
 
-    // set httpOnly cookie
+    // 🔹 สร้าง JWT พร้อม flag must_change_password
+    const token = signAdminToken(staff);
+
+    // 🔹 เซ็ต cookie (httpOnly)
     res.cookie("accessToken", token, {
       httpOnly: true,
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24,
+      maxAge: 1000 * 60 * 60 * 24, // 1 วัน
       path: "/",
     });
 
-    // update last login
+    // 🔹 อัปเดตเวลา last_login
     staff.last_login = new Date();
     await staff.save();
 
+    // 🔹 ส่ง response กลับ
     return res.json({
       message: "Login success",
-      user: { id: staff.id, username: staff.username, name: staff.name, role: staff.role },
+      user: {
+        id: staff.id,
+        username: staff.username,
+        name: staff.name,
+        role: staff.role,
+        must_change_password: staff.must_change_password,
+      },
     });
   } catch (err) {
     console.error("POST /api/auth/login error:", err);
@@ -47,28 +71,43 @@ export const login = async (req, res) => {
   }
 };
 
-// ✅ GET /api/auth/me
+/**
+ * ✅ ME (GET /api/auth/me)
+ * ใช้ตรวจสอบ JWT ใน cookie / header
+ */
 export const getMe = (req, res) => {
   try {
+    // 🔹 ดึง token จาก cookie หรือ header
     const accessToken =
       req.cookies?.accessToken || req.headers.authorization?.replace(/^Bearer\s+/i, "");
-    if (!accessToken) return res.status(200).json({ authenticated: false });
 
+    if (!accessToken) {
+      return res.status(200).json({ authenticated: false });
+    }
+
+    // 🔹 ถอดรหัส JWT (อ่าน payload)
     const base64 = accessToken.split(".")[1];
     const payload = JSON.parse(Buffer.from(base64, "base64").toString("utf8") || "{}");
 
-    return res.json({ authenticated: true, user: payload });
+    return res.json({
+      authenticated: true,
+      user: payload,
+    });
   } catch {
     return res.json({ authenticated: false });
   }
 };
 
-// ✅ POST /api/auth/logout
+/**
+ * ✅ LOGOUT (POST /api/auth/logout)
+ * เคลียร์ cookie accessToken ออกจาก browser
+ */
 export const logout = (req, res) => {
   res.clearCookie("accessToken", {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
   });
-  return res.json({ message: "Logged out" });
+
+  return res.json({ message: "Logged out successfully" });
 };

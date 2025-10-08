@@ -12,8 +12,10 @@ export function signAdminToken(user) {
     id: user.id,
     username: user.username,
     role: user.role,
-    must_change_password: !!user.must_change_password, // true = ต้องเปลี่ยนรหัสผ่าน
+    must_change_password: Boolean(user.must_change_password),
   };
+
+  console.log(user.must_change_password, typeof user.must_change_password);
 
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES,
