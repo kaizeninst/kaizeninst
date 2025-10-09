@@ -1,5 +1,6 @@
 import models from "../models/index.js";
 import { Op } from "sequelize";
+import nodemailer from "nodemailer";
 const { Quote, QuoteItem, Product } = models;
 
 // ✅ CREATE
@@ -30,6 +31,9 @@ export const createQuote = async (req, res) => {
     const newQuote = await Quote.findByPk(quote.id, {
       include: [{ model: QuoteItem, include: [Product] }],
     });
+
+    // ✅ ส่งอีเมลแจ้ง admin
+    await sendQuoteNotificationEmail(newQuote);
 
     res.status(201).json(newQuote);
   } catch (err) {
@@ -254,3 +258,64 @@ export const convertQuoteToOrder = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+async function sendQuoteNotificationEmail(quote) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: process.env.SMTP_SECURE === "true",
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    const itemsHtml = quote.QuoteItems.map(
+      (item, i) => `
+      <tr>
+        <td style="border:1px solid #ddd;padding:6px;">${i + 1}</td>
+        <td style="border:1px solid #ddd;padding:6px;">${item.Product.name}</td>
+        <td style="border:1px solid #ddd;padding:6px;">${item.quantity}</td>
+        <td style="border:1px solid #ddd;padding:6px;">${item.unit_price.toLocaleString()} ฿</td>
+        <td style="border:1px solid #ddd;padding:6px;">${item.line_total.toLocaleString()} ฿</td>
+      </tr>`
+    ).join("");
+
+    const total = quote.QuoteItems.reduce((sum, it) => sum + (parseFloat(it.line_total) || 0), 0);
+
+    const html = `
+      <div style="font-family:system-ui,Segoe UI,Roboto,Arial;">
+        <h2>📩 New Quote Request</h2>
+        <p><b>Name:</b> ${quote.customer_name}</p>
+        <p><b>Email:</b> ${quote.customer_email}</p>
+        ${quote.company_name ? `<p><b>Company:</b> ${quote.company_name}</p>` : ""}
+        <table style="border-collapse:collapse;width:100%;margin-top:10px;">
+          <thead>
+            <tr style="background:#f3f3f3;">
+              <th style="border:1px solid #ddd;padding:6px;">#</th>
+              <th style="border:1px solid #ddd;padding:6px;">Product</th>
+              <th style="border:1px solid #ddd;padding:6px;">Qty</th>
+              <th style="border:1px solid #ddd;padding:6px;">Unit</th>
+              <th style="border:1px solid #ddd;padding:6px;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemsHtml}</tbody>
+        </table>
+        <p style="margin-top:10px;"><b>Total:</b> ${total.toLocaleString()} ฿</p>
+        <p>🕒 Created at: ${new Date().toLocaleString("th-TH")}</p>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"Kaizeninst Website" <${process.env.SMTP_USER}>`,
+      to: process.env.ADMIN_EMAIL,
+      subject: `[Quote Request] ${quote.customer_name || "Unknown"} (${quote.id})`,
+      html,
+    });
+
+    console.log(`📧 Quote email sent for quote #${quote.id}`);
+  } catch (err) {
+    console.error("❌ Failed to send quote email:", err.message);
+  }
+}

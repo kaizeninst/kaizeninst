@@ -4,14 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageSquare } from "lucide-react";
-import { getCart, computeTotals, formatTHB } from "@/utils/cart";
+import { getCart, computeTotals, formatTHB, clearCart } from "@/utils/cart";
 
 const VAT_RATE = 0.07; // 7%
 
 export default function RequestQuotePage() {
   const router = useRouter();
 
-  // contact form
+  // Contact form
   const [formData, setFormData] = useState({
     fullName: "",
     companyName: "",
@@ -21,24 +21,23 @@ export default function RequestQuotePage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // items from real cart
-  const [items, setItems] = useState([]); // [{id, quantity, name, price, image}]
+  // Cart items
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // load items from localStorage cart -> bulk fetch details
+  // Load cart from localStorage and fetch product details
   const loadFromCart = async () => {
     const base = getCart(); // [{ id, quantity }]
     if (!base.length) {
       setItems([]);
       return;
     }
-    const ids = base.map((x) => x.id);
+
     try {
       const res = await fetch("/api/products/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids }),
-        cache: "no-store",
+        body: JSON.stringify({ ids: base.map((x) => x.id) }),
       });
       const json = await res.json();
       const map = new Map((json?.data || []).map((p) => [p.id, p]));
@@ -53,17 +52,9 @@ export default function RequestQuotePage() {
         };
       });
       setItems(detailed);
-    } catch (e) {
-      console.error("Bulk load failed:", e);
-      setItems(
-        base.map((row) => ({
-          id: row.id,
-          quantity: Number(row.quantity || 1),
-          name: "Unknown",
-          price: 0,
-          image: "",
-        }))
-      );
+    } catch (err) {
+      console.error("Bulk load failed:", err);
+      setItems([]);
     }
   };
 
@@ -75,9 +66,7 @@ export default function RequestQuotePage() {
       if (mounted) setLoading(false);
     })();
 
-    const onChange = async () => {
-      await loadFromCart();
-    };
+    const onChange = () => loadFromCart();
     window.addEventListener("cart:change", onChange);
     window.addEventListener("storage", onChange);
     return () => {
@@ -87,7 +76,7 @@ export default function RequestQuotePage() {
     };
   }, []);
 
-  // computed prices (THB)
+  // Totals
   const itemsCount = useMemo(
     () => items.reduce((acc, it) => acc + Number(it.quantity || 0), 0),
     [items]
@@ -95,25 +84,26 @@ export default function RequestQuotePage() {
   const { subtotal, vat, total } = useMemo(
     () =>
       computeTotals(
-        items.map((x) => ({ ...x })), // uses VAT from utils by default
+        items.map((x) => ({ ...x })),
         VAT_RATE
       ),
     [items]
   );
 
-  // form handlers
+  // Handle form input
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ✅ Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.fullName || !formData.phoneNumber || !formData.emailAddress) return;
 
     setSubmitting(true);
     try {
-      // แปลงสินค้าในตะกร้าเป็น QuoteItems
+      // เตรียม payload สำหรับสร้าง quote
       const QuoteItems = items.map((it) => ({
         product_id: it.id,
         quantity: Number(it.quantity || 1),
@@ -128,22 +118,24 @@ export default function RequestQuotePage() {
         QuoteItems,
       };
 
+      // ✅ สร้าง quote (Express backend จะส่งอีเมลอัตโนมัติ)
       const res = await fetch("/api/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         cache: "no-store",
       });
+
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error || "Submit failed");
+        throw new Error(j?.error || "Failed to submit quote");
       }
 
-      // success → ไปหน้าสำเร็จ (หรือล้างตะกร้า)
-      // clearCart();
+      // ล้างตะกร้า & ไปหน้าสำเร็จ
+      clearCart();
       router.push("/quote/success");
     } catch (err) {
-      console.error(err);
+      console.error("Submit failed:", err);
       alert(err.message || "Failed to submit quote request.");
     } finally {
       setSubmitting(false);
@@ -163,7 +155,7 @@ export default function RequestQuotePage() {
         </p>
       </div>
 
-      {/* Grid */}
+      {/* Layout Grid */}
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         {/* Left: Items for Quote */}
         <section className="space-y-4 rounded-lg bg-gray-50 p-6 shadow-md">
@@ -177,7 +169,7 @@ export default function RequestQuotePage() {
                 <li key={it.id} className="flex items-center justify-between text-gray-700">
                   <span className="truncate">{it.name}</span>
                   <span className="whitespace-nowrap">
-                    {it.quantity} x {formatTHB(it.price)}
+                    {it.quantity} × {formatTHB(it.price)}
                   </span>
                 </li>
               ))}
@@ -207,29 +199,29 @@ export default function RequestQuotePage() {
           </div>
 
           <div className="rounded-md bg-blue-100 p-4 text-sm">
-            <p className="text-sm italic text-blue-900">
+            <p className="italic text-blue-900">
               Note: This is an estimated total. Final pricing may vary based on your specific
               requirements and any customizations discussed.
             </p>
           </div>
         </section>
 
-        {/* Right: Contact Information */}
+        {/* Right: Contact Form */}
         <section className="rounded-lg bg-white p-6 shadow-md">
           <h2 className="mb-4 text-2xl font-bold">Contact Information</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-                Full Name
+                Full Name *
               </label>
               <input
                 type="text"
-                name="fullName"
                 id="fullName"
+                name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
                 required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
               />
             </div>
 
@@ -239,8 +231,8 @@ export default function RequestQuotePage() {
               </label>
               <input
                 type="text"
-                name="companyName"
                 id="companyName"
+                name="companyName"
                 value={formData.companyName}
                 onChange={handleChange}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
@@ -253,12 +245,12 @@ export default function RequestQuotePage() {
               </label>
               <input
                 type="tel"
-                name="phoneNumber"
                 id="phoneNumber"
+                name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
                 required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
               />
             </div>
 
@@ -268,12 +260,12 @@ export default function RequestQuotePage() {
               </label>
               <input
                 type="email"
-                name="emailAddress"
                 id="emailAddress"
+                name="emailAddress"
                 value={formData.emailAddress}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
                 required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500"
               />
             </div>
 
@@ -282,8 +274,8 @@ export default function RequestQuotePage() {
                 Note
               </label>
               <textarea
-                name="note"
                 id="note"
+                name="note"
                 value={formData.note}
                 onChange={handleChange}
                 rows={4}
