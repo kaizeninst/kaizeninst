@@ -3,60 +3,75 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /* ---------- Hero Images ---------- */
-const heroSlides = [
-  "https://placehold.co/1600x800/png",
-  "https://placehold.co/1600x800/png",
-  "https://placehold.co/1600x800/png",
+const heroSlidesDesktop = [
+  "https://placehold.co/1600x800/png?text=Desktop+1",
+  "https://placehold.co/1600x800/png?text=Desktop+2",
+];
+
+const heroSlidesMobile = [
+  "https://placehold.co/800x1200/png?text=Mobile+1",
+  "https://placehold.co/800x1200/png?text=Mobile+2",
 ];
 
 const promotionBanners = [
-  "https://placehold.co/800x400/png",
-  "https://placehold.co/400x200/png",
-  "https://placehold.co/400x200/png",
+  "https://placehold.co/800x400/png?text=Promotion+1",
+  "https://placehold.co/400x200/png?text=Promotion+2",
+  "https://placehold.co/400x200/png?text=Promotion+3",
 ];
 
 /* ---------- HERO BANNER ---------- */
 const HeroBanner = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [direction, setDirection] = useState(1); // 1 = next, -1 = prev
+  const [direction, setDirection] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
   const intervalRef = useRef(null);
 
-  // ฟังก์ชันเริ่มเลื่อนอัตโนมัติ
+  // ตรวจขนาดหน้าจอ
+  useEffect(() => {
+    const checkScreen = () => setIsMobile(window.innerWidth < 768);
+    checkScreen();
+    window.addEventListener("resize", checkScreen);
+    return () => window.removeEventListener("resize", checkScreen);
+  }, []);
+
+  // Auto slide
   const startAutoSlide = () => {
     clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
       setDirection(1);
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+      setCurrentSlide(
+        (prev) => (prev + 1) % (isMobile ? heroSlidesMobile.length : heroSlidesDesktop.length)
+      );
     }, 5000);
   };
 
   useEffect(() => {
     startAutoSlide();
     return () => clearInterval(intervalRef.current);
-  }, []);
+  }, [isMobile]);
 
   // เมื่อคลิก indicator
   const handleIndicatorClick = (idx) => {
-    // ถ้า index มากกว่าปัจจุบัน → ไปข้างหน้า
-    // ถ้าน้อยกว่า → ถอยหลัง
     const dir = idx > currentSlide ? 1 : -1;
     setDirection(dir);
     setCurrentSlide(idx);
     startAutoSlide(); // reset timer
   };
 
-  // เมื่อเปลี่ยนสไลด์ (เลื่อนไป-กลับ)
+  // แอนิเมชัน slide ซ้ายขวา
   const variants = {
     enter: (dir) => ({ x: dir > 0 ? "100%" : "-100%" }),
     center: { x: 0 },
     exit: (dir) => ({ x: dir > 0 ? "-100%" : "100%" }),
   };
 
+  // เลือกรูปตามขนาดจอ
+  const slides = isMobile ? heroSlidesMobile : heroSlidesDesktop;
+
   return (
-    <div className="relative h-[70vh] w-full overflow-hidden">
+    <div className="relative flex h-[70vh] w-full items-center justify-center overflow-hidden">
       {/* Slides */}
       <AnimatePresence custom={direction} mode="popLayout" initial={false}>
         <motion.div
@@ -73,19 +88,19 @@ const HeroBanner = () => {
           className="absolute inset-0"
         >
           <Image
-            src={heroSlides[currentSlide]}
+            src={slides[currentSlide]}
             alt={`Hero Slide ${currentSlide + 1}`}
             fill
-            className="object-cover"
             sizes="100vw"
+            className="object-cover"
             priority
           />
         </motion.div>
       </AnimatePresence>
 
       {/* Indicators */}
-      <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 space-x-2">
-        {heroSlides.map((_, idx) => (
+      <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 space-x-2">
+        {slides.map((_, idx) => (
           <button
             key={idx}
             onClick={() => handleIndicatorClick(idx)}
@@ -125,7 +140,7 @@ const HomePageContent = () => {
 
   return (
     <div className="container mx-auto space-y-16 py-12">
-      {/* Promotion */}
+      {/* ---------- PROMOTIONS ---------- */}
       <div>
         <h2 className="mb-6 text-3xl font-bold text-gray-900">Promotions</h2>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -152,6 +167,7 @@ const HomePageContent = () => {
           </div>
         </div>
       </div>
+
       {/* ---------- CATEGORIES ---------- */}
       <section>
         <div className="mb-6 flex items-center justify-between">
@@ -176,7 +192,7 @@ const HomePageContent = () => {
         </div>
       </section>
 
-      {/* New Products */}
+      {/* ---------- NEW PRODUCTS ---------- */}
       <section>
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-3xl font-bold text-gray-900">New Arrivals</h2>
