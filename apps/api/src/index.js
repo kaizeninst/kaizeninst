@@ -13,6 +13,7 @@ import productRoutes from "./routes/products.js";
 import orderRoutes from "./routes/orders.js";
 import quoteRoutes from "./routes/quotes.js";
 import staffRoutes from "./routes/staff.js";
+import emailRoutes from "./routes/email.js";
 
 const app = express();
 
@@ -68,6 +69,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/quotes", quoteRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/email", emailRoutes);
 
 // 404 handler for API routes
 app.use((req, res, next) => {
