@@ -20,6 +20,11 @@ const nextConfig = {
         port: "4000",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "https",
+        hostname: "placehold.co",
+        pathname: "/**",
+      },
     ],
   },
 };

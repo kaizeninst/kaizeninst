@@ -1,79 +1,96 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import Navbar from "../../components/layout/Navbar";
-import Footer from "../../components/layout/Footer";
-import React, { useState, useEffect } from "react";
-import { products } from "../../data/productsdata";
-import { MoveLeft, MoveRight } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const uniqueBrands = [...new Set(products.map((p) => p.brand))];
-const brandsWithImages = uniqueBrands.map((brandName) => {
-  const product = products.find((p) => p.brand === brandName);
-  return {
-    name: brandName,
-    image: product?.brand_image ?? "https://placehold.co/400x400?text=No+Image",
-  };
-});
-const brandsToShow = brandsWithImages.slice(0, 8);
-
-const heroSlides = ["/assets/Black.jpg", "/assets/Black.jpg", "/assets/Black.jpg"];
-
-const promotionBanners = [
-  "https://placehold.co/600x200/F0F0F0/000000?text=Promotion+Banner+1",
-  "https://placehold.co/600x200/F0F0F0/000000?text=Promotion+Banner+2",
-  "https://placehold.co/600x200/F0F0F0/000000?text=Promotion+Banner+3",
+/* ---------- Hero Images ---------- */
+const heroSlides = [
+  "https://placehold.co/1600x800/png",
+  "https://placehold.co/1600x800/png",
+  "https://placehold.co/1600x800/png",
 ];
 
-// ============================================================================
-// HERO BANNER
-// ============================================================================
+const promotionBanners = [
+  "https://placehold.co/800x400/png",
+  "https://placehold.co/400x200/png",
+  "https://placehold.co/400x200/png",
+];
+
+/* ---------- HERO BANNER ---------- */
 const HeroBanner = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [direction, setDirection] = useState(1); // 1 = next, -1 = prev
+  const intervalRef = useRef(null);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
+  // ฟังก์ชันเริ่มเลื่อนอัตโนมัติ
+  const startAutoSlide = () => {
+    clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setDirection(1);
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
-    return () => clearInterval(interval);
+  };
+
+  useEffect(() => {
+    startAutoSlide();
+    return () => clearInterval(intervalRef.current);
   }, []);
 
+  // เมื่อคลิก indicator
+  const handleIndicatorClick = (idx) => {
+    // ถ้า index มากกว่าปัจจุบัน → ไปข้างหน้า
+    // ถ้าน้อยกว่า → ถอยหลัง
+    const dir = idx > currentSlide ? 1 : -1;
+    setDirection(dir);
+    setCurrentSlide(idx);
+    startAutoSlide(); // reset timer
+  };
+
+  // เมื่อเปลี่ยนสไลด์ (เลื่อนไป-กลับ)
+  const variants = {
+    enter: (dir) => ({ x: dir > 0 ? "100%" : "-100%" }),
+    center: { x: 0 },
+    exit: (dir) => ({ x: dir > 0 ? "-100%" : "100%" }),
+  };
+
   return (
-    <div className="relative h-screen w-full">
-      <Image
-        src={heroSlides[currentSlide]}
-        alt={`Hero Slide ${currentSlide + 1}`}
-        fill
-        className="object-cover"
-        sizes="100vw"
-        unoptimized
-      />
-      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-        <h1 className="text-4xl font-bold text-white">Hero Banner</h1>
-      </div>
-      {/* Prev/Next */}
-      <button
-        onClick={() =>
-          setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)
-        }
-        className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white hover:bg-black/70"
-      >
-        <MoveLeft />
-      </button>
-      <button
-        onClick={() => setCurrentSlide((prev) => (prev + 1) % heroSlides.length)}
-        className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white hover:bg-black/70"
-      >
-        <MoveRight />
-      </button>
+    <div className="relative h-[70vh] w-full overflow-hidden">
+      {/* Slides */}
+      <AnimatePresence custom={direction} mode="popLayout" initial={false}>
+        <motion.div
+          key={currentSlide}
+          custom={direction}
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{
+            x: { type: "spring", stiffness: 120, damping: 20 },
+            duration: 0.8,
+          }}
+          className="absolute inset-0"
+        >
+          <Image
+            src={heroSlides[currentSlide]}
+            alt={`Hero Slide ${currentSlide + 1}`}
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
+          />
+        </motion.div>
+      </AnimatePresence>
+
       {/* Indicators */}
-      <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 space-x-2">
+      <div className="absolute bottom-8 left-1/2 flex -translate-x-1/2 space-x-2">
         {heroSlides.map((_, idx) => (
           <button
             key={idx}
-            onClick={() => setCurrentSlide(idx)}
-            className={`h-3 w-3 rounded-full ${
-              idx === currentSlide ? "bg-primary" : "bg-secondary"
+            onClick={() => handleIndicatorClick(idx)}
+            className={`h-3 w-3 rounded-full transition-all ${
+              idx === currentSlide ? "scale-125 bg-white" : "bg-white/50"
             }`}
           />
         ))}
@@ -82,104 +99,120 @@ const HeroBanner = () => {
   );
 };
 
-// ============================================================================
-// HOME PAGE CONTENT
-// ============================================================================
+/* ---------- HOME PAGE CONTENT ---------- */
 const HomePageContent = () => {
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [catRes, prodRes] = await Promise.all([
+          fetch("/api/categories", { cache: "no-store" }),
+          fetch("/api/products", { cache: "no-store" }),
+        ]);
+
+        const catJson = await catRes.json();
+        const prodJson = await prodRes.json();
+
+        setCategories(catJson?.data || catJson);
+        setProducts(prodJson?.data || prodJson);
+      } catch (err) {
+        console.error("Failed to load data:", err);
+      }
+    })();
+  }, []);
+
   return (
-    <div className="container mx-auto space-y-12 px-4 py-8">
+    <div className="container mx-auto space-y-16 py-12">
       {/* Promotion */}
       <div>
-        <h2 className="text-foreground mb-4 text-xl font-bold">Promotion</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="md:col-span-2">
-            <Link href="/promotion/1">
-              <Image
-                src={promotionBanners[0]}
-                alt="Promotion Banner 1"
-                width={800}
-                height={400}
-                className="h-full w-full rounded-lg object-cover shadow-lg"
-                unoptimized
-              />
-            </Link>
+        <h2 className="mb-6 text-3xl font-bold text-gray-900">Promotions</h2>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="overflow-hidden rounded-2xl md:col-span-2">
+            <Image
+              src={promotionBanners[0]}
+              alt="Promotion Banner 1"
+              width={800}
+              height={400}
+              className="h-full w-full rounded-2xl object-cover transition-transform duration-500 hover:scale-105"
+            />
           </div>
-          <div className="grid gap-4 md:grid-rows-2">
+          <div className="grid gap-6 md:grid-rows-2">
             {promotionBanners.slice(1).map((banner, i) => (
-              <Link href={`/promotion/${i + 2}`} key={i}>
-                <Image
-                  src={banner}
-                  alt={`Promotion Banner ${i + 2}`}
-                  width={400}
-                  height={200}
-                  className="h-full w-full rounded-lg object-cover shadow-lg"
-                  unoptimized
-                />
-              </Link>
+              <Image
+                key={i}
+                src={banner}
+                alt={`Promotion Banner ${i + 2}`}
+                width={400}
+                height={200}
+                className="h-full w-full rounded-2xl object-cover transition-transform duration-500 hover:scale-105"
+              />
             ))}
           </div>
         </div>
       </div>
-
-      {/* Brand Categories */}
+      {/* ---------- CATEGORIES ---------- */}
       <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-foreground text-3xl font-bold">Category</h2>
-          <Link href="/products" className="text-primary hover:underline">
-            View All &gt;
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-3xl font-bold text-gray-900">Category</h2>
+          <Link href="/products" className="text-primary font-semibold hover:underline">
+            View All →
           </Link>
         </div>
+
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {brandsToShow.map((brandObj) => (
-            <a
-              href={`/products?brand=${encodeURIComponent(brandObj.name)}`}
-              key={brandObj.name}
-              className="group block"
+          {categories.slice(0, 8).map((cat) => (
+            <Link
+              href={`/products?category=${cat.id}`}
+              key={cat.id}
+              className="hover:border-primary flex h-40 items-center justify-center rounded-xl border border-gray-200 bg-white text-center shadow-md transition-all hover:shadow-lg"
             >
-              <div className="bg-background relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg shadow-md transition-shadow hover:shadow-xl">
-                <Image
-                  src={brandObj.image}
-                  alt={brandObj.name}
-                  fill
-                  unoptimized
-                  className="object-cover"
-                />
-                <h3 className="text-foreground group-hover:text-primary absolute text-2xl font-bold transition-colors">
-                  {brandObj.name}
-                </h3>
-              </div>
-            </a>
+              <span className="group-hover:text-primary text-xl font-semibold text-gray-800">
+                {cat.name}
+              </span>
+            </Link>
           ))}
         </div>
       </section>
 
       {/* New Products */}
       <section>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-foreground text-3xl font-bold">New Product</h2>
-          <Link href="/products" className="text-primary hover:underline">
-            View All &gt;
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-3xl font-bold text-gray-900">New Arrivals</h2>
+          <Link href="/products" className="text-primary font-semibold hover:underline">
+            View All →
           </Link>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {products.slice(0, 8).map((product) => (
-            <Link href={`/products/${product.id}`} key={product.id} className="group block">
-              <div className="bg-background overflow-hidden rounded-lg shadow-md transition-shadow hover:shadow-xl">
-                <div className="relative aspect-square w-full">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    className="object-cover transition-transform group-hover:scale-105"
-                    unoptimized
-                  />
-                </div>
-                <div className="p-4">
-                  <h3 className="text-foreground text-lg font-semibold">{product.name}</h3>
-                </div>
-                <div className="p-4 pt-0">
-                  <h1 className="text-primary font-semibold">฿{product.price}</h1>
-                </div>
+            <Link
+              href={`/products/${product.id}`}
+              key={product.id}
+              className="group overflow-hidden rounded-xl bg-white shadow-md transition-shadow hover:shadow-2xl"
+            >
+              <div className="relative aspect-square">
+                <Image
+                  src={
+                    product.image_path && product.image_path.trim() !== ""
+                      ? product.image_path.startsWith("http")
+                        ? product.image_path
+                        : product.image_path.startsWith("/uploads")
+                          ? product.image_path
+                          : `/uploads/${product.image_path}`
+                      : "https://placehold.co/400x400/png"
+                  }
+                  alt={product.name}
+                  fill
+                  unoptimized
+                  className="object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              </div>
+              <div className="p-4">
+                <h3 className="group-hover:text-primary text-lg font-semibold text-gray-800">
+                  {product.name}
+                </h3>
+                <p className="text-primary mt-1 font-bold">฿{product.price}</p>
               </div>
             </Link>
           ))}
@@ -189,9 +222,7 @@ const HomePageContent = () => {
   );
 };
 
-// ============================================================================
-// MAIN APP
-// ============================================================================
+/* ---------- MAIN ---------- */
 export default function Home() {
   return (
     <>
