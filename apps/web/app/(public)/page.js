@@ -4,15 +4,19 @@ import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* ---------- Hero Images ---------- */
-const heroSlidesDesktop = [
+/* ============================================================
+   HERO IMAGE SOURCES
+   ============================================================ */
+const heroImagesDesktop = [
   "https://placehold.co/1600x800/png?text=Desktop+1",
   "https://placehold.co/1600x800/png?text=Desktop+2",
+  "https://placehold.co/1600x800/png?text=Desktop+3",
 ];
 
-const heroSlidesMobile = [
+const heroImagesMobile = [
   "https://placehold.co/800x1200/png?text=Mobile+1",
   "https://placehold.co/800x1200/png?text=Mobile+2",
+  "https://placehold.co/800x1200/png?text=Mobile+3",
 ];
 
 const promotionBanners = [
@@ -21,63 +25,63 @@ const promotionBanners = [
   "https://placehold.co/400x200/png?text=Promotion+3",
 ];
 
-/* ---------- HERO BANNER ---------- */
+/* ============================================================
+   HERO BANNER COMPONENT
+   ============================================================ */
 const HeroBanner = () => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const [isMobile, setIsMobile] = useState(false);
-  const intervalRef = useRef(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [slideDirection, setSlideDirection] = useState(1); // 1 = next, -1 = previous
+  const [isMobileScreen, setIsMobileScreen] = useState(false);
+  const autoSlideRef = useRef(null);
 
-  // ตรวจขนาดหน้าจอ
+  /* ---------- Detect screen size ---------- */
   useEffect(() => {
-    const checkScreen = () => setIsMobile(window.innerWidth < 768);
-    checkScreen();
-    window.addEventListener("resize", checkScreen);
-    return () => window.removeEventListener("resize", checkScreen);
+    const handleResize = () => setIsMobileScreen(window.innerWidth < 768);
+    handleResize(); // initial check
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Auto slide
+  /* ---------- Start auto-slide ---------- */
   const startAutoSlide = () => {
-    clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setDirection(1);
-      setCurrentSlide(
-        (prev) => (prev + 1) % (isMobile ? heroSlidesMobile.length : heroSlidesDesktop.length)
-      );
+    clearInterval(autoSlideRef.current);
+    autoSlideRef.current = setInterval(() => {
+      setSlideDirection(1);
+      setCurrentIndex((prev) => (prev + 1) % activeSlides.length);
     }, 5000);
   };
 
   useEffect(() => {
     startAutoSlide();
-    return () => clearInterval(intervalRef.current);
-  }, [isMobile]);
+    return () => clearInterval(autoSlideRef.current);
+  }, [isMobileScreen]);
 
-  // เมื่อคลิก indicator
-  const handleIndicatorClick = (idx) => {
-    const dir = idx > currentSlide ? 1 : -1;
-    setDirection(dir);
-    setCurrentSlide(idx);
-    startAutoSlide(); // reset timer
+  /* ---------- Handle indicator click ---------- */
+  const handleIndicatorClick = (targetIndex) => {
+    const newDirection = targetIndex > currentIndex ? 1 : -1;
+    setSlideDirection(newDirection);
+    setCurrentIndex(targetIndex);
+    startAutoSlide(); // reset timer after manual change
   };
 
-  // แอนิเมชัน slide ซ้ายขวา
-  const variants = {
+  /* ---------- Slide animation variants ---------- */
+  const slideVariants = {
     enter: (dir) => ({ x: dir > 0 ? "100%" : "-100%" }),
     center: { x: 0 },
     exit: (dir) => ({ x: dir > 0 ? "-100%" : "100%" }),
   };
 
-  // เลือกรูปตามขนาดจอ
-  const slides = isMobile ? heroSlidesMobile : heroSlidesDesktop;
+  /* ---------- Select image set based on screen size ---------- */
+  const activeSlides = isMobileScreen ? heroImagesMobile : heroImagesDesktop;
 
   return (
     <div className="relative flex h-[70vh] w-full items-center justify-center overflow-hidden">
-      {/* Slides */}
-      <AnimatePresence custom={direction} mode="popLayout" initial={false}>
+      {/* Slide container */}
+      <AnimatePresence custom={slideDirection} mode="popLayout" initial={false}>
         <motion.div
-          key={currentSlide}
-          custom={direction}
-          variants={variants}
+          key={currentIndex}
+          custom={slideDirection}
+          variants={slideVariants}
           initial="enter"
           animate="center"
           exit="exit"
@@ -88,8 +92,8 @@ const HeroBanner = () => {
           className="absolute inset-0"
         >
           <Image
-            src={slides[currentSlide]}
-            alt={`Hero Slide ${currentSlide + 1}`}
+            src={activeSlides[currentIndex]}
+            alt={`Hero Slide ${currentIndex + 1}`}
             fill
             sizes="100vw"
             className="object-cover"
@@ -98,14 +102,14 @@ const HeroBanner = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Indicators */}
+      {/* Indicator buttons */}
       <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 space-x-2">
-        {slides.map((_, idx) => (
+        {activeSlides.map((_, index) => (
           <button
-            key={idx}
-            onClick={() => handleIndicatorClick(idx)}
+            key={index}
+            onClick={() => handleIndicatorClick(index)}
             className={`h-3 w-3 rounded-full transition-all ${
-              idx === currentSlide ? "scale-125 bg-white" : "bg-white/50"
+              index === currentIndex ? "scale-125 bg-white" : "bg-white/50"
             }`}
           />
         ))}
@@ -114,7 +118,9 @@ const HeroBanner = () => {
   );
 };
 
-/* ---------- HOME PAGE CONTENT ---------- */
+/* ============================================================
+   HOME PAGE CONTENT
+   ============================================================ */
 const HomePageContent = () => {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
@@ -122,18 +128,18 @@ const HomePageContent = () => {
   useEffect(() => {
     (async () => {
       try {
-        const [catRes, prodRes] = await Promise.all([
+        const [categoryResponse, productResponse] = await Promise.all([
           fetch("/api/categories", { cache: "no-store" }),
           fetch("/api/products", { cache: "no-store" }),
         ]);
 
-        const catJson = await catRes.json();
-        const prodJson = await prodRes.json();
+        const categoryData = await categoryResponse.json();
+        const productData = await productResponse.json();
 
-        setCategories(catJson?.data || catJson);
-        setProducts(prodJson?.data || prodJson);
-      } catch (err) {
-        console.error("Failed to load data:", err);
+        setCategories(categoryData?.data || categoryData);
+        setProducts(productData?.data || productData);
+      } catch (error) {
+        console.error("Failed to load data:", error);
       }
     })();
   }, []);
@@ -141,7 +147,7 @@ const HomePageContent = () => {
   return (
     <div className="container mx-auto space-y-16 py-12">
       {/* ---------- PROMOTIONS ---------- */}
-      <div>
+      <section>
         <h2 className="mb-6 text-3xl font-bold text-gray-900">Promotions</h2>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <div className="overflow-hidden rounded-2xl md:col-span-2">
@@ -154,11 +160,11 @@ const HomePageContent = () => {
             />
           </div>
           <div className="grid gap-6 md:grid-rows-2">
-            {promotionBanners.slice(1).map((banner, i) => (
+            {promotionBanners.slice(1).map((banner, index) => (
               <Image
-                key={i}
+                key={index}
                 src={banner}
-                alt={`Promotion Banner ${i + 2}`}
+                alt={`Promotion Banner ${index + 2}`}
                 width={400}
                 height={200}
                 className="h-full w-full rounded-2xl object-cover transition-transform duration-500 hover:scale-105"
@@ -166,7 +172,7 @@ const HomePageContent = () => {
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ---------- CATEGORIES ---------- */}
       <section>
@@ -178,14 +184,14 @@ const HomePageContent = () => {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.slice(0, 8).map((cat) => (
+          {categories.slice(0, 8).map((category) => (
             <Link
-              href={`/products?category=${cat.id}`}
-              key={cat.id}
+              href={`/products?category=${category.id}`}
+              key={category.id}
               className="hover:border-primary flex h-40 items-center justify-center rounded-xl border border-gray-200 bg-white text-center shadow-md transition-all hover:shadow-lg"
             >
               <span className="group-hover:text-primary text-xl font-semibold text-gray-800">
-                {cat.name}
+                {category.name}
               </span>
             </Link>
           ))}
@@ -200,6 +206,7 @@ const HomePageContent = () => {
             View All →
           </Link>
         </div>
+
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {products.slice(0, 8).map((product) => (
             <Link
@@ -238,7 +245,9 @@ const HomePageContent = () => {
   );
 };
 
-/* ---------- MAIN ---------- */
+/* ============================================================
+   MAIN PAGE EXPORT
+   ============================================================ */
 export default function Home() {
   return (
     <>
