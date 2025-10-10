@@ -1,8 +1,12 @@
+// ============================================================
+//  AUTH MIDDLEWARE
+// ============================================================
+
 import jwt from "jsonwebtoken";
 
 /* ============================================================
- * 🔹 ดึง Token จาก Cookie หรือ Header (Authorization: Bearer <token>)
- * ============================================================ */
+   Extract token from cookie or Authorization header
+   ============================================================ */
 function extractToken(req) {
   const fromCookie = req.cookies?.accessToken;
   const fromHeader = req.headers.authorization?.replace(/^Bearer\s+/i, "");
@@ -10,8 +14,8 @@ function extractToken(req) {
 }
 
 /* ============================================================
- * 🔹 ตรวจสอบและถอดรหัส JWT (verify ลายเซ็น + ตรวจวันหมดอายุ)
- * ============================================================ */
+   Verify JWT (signature + expiration)
+   ============================================================ */
 function verifyJwt(token) {
   const { JWT_SECRET, JWT_ISS = "kaizeninst-api" } = process.env;
 
@@ -22,7 +26,6 @@ function verifyJwt(token) {
   try {
     return jwt.verify(token, JWT_SECRET, { issuer: JWT_ISS });
   } catch (err) {
-    // ตรวจสอบประเภทของ JWT Error แล้วโยนกลับในรูปแบบเข้าใจง่าย
     switch (err.name) {
       case "TokenExpiredError":
         throw new Error("Token expired");
@@ -37,11 +40,10 @@ function verifyJwt(token) {
 }
 
 /* ============================================================
- * 🔹 Middleware สำหรับตรวจสอบ Role
- *   - หากไม่มี Token → 401 Unauthorized
- *   - หาก Token ผิด/หมดอายุ → 401 พร้อมสาเหตุ
- *   - หาก Role ไม่อยู่ในกลุ่มที่อนุญาต → 403 Forbidden
- * ============================================================ */
+   Middleware: require specific roles
+   - 401 if no token or invalid token
+   - 403 if role is not allowed
+   ============================================================ */
 export function requireRole(...roles) {
   return (req, res, next) => {
     try {
@@ -62,23 +64,14 @@ export function requireRole(...roles) {
         });
       }
 
-      // ✅ แนบข้อมูล user ลงใน req เพื่อใช้ใน controller ถัดไป
+      // Attach user info to request
       req.user = payload;
       next();
     } catch (err) {
-      // แยกข้อความตอบกลับตามประเภทข้อผิดพลาด
+      const message = err.message || "Unauthorized";
       let status = 401;
-      let message = err.message || "Unauthorized";
 
-      if (message === "Token expired") {
-        status = 401;
-      } else if (message === "Invalid token") {
-        status = 401;
-      } else if (message === "Token not active yet") {
-        status = 401;
-      } else if (message === "Token verification failed") {
-        status = 401;
-      } else if (message === "Missing JWT_SECRET in environment variables") {
+      if (message === "Missing JWT_SECRET in environment variables") {
         status = 500;
       }
 
@@ -89,11 +82,11 @@ export function requireRole(...roles) {
 }
 
 /* ============================================================
- * 🔹 Exports สำหรับใช้งานง่ายใน route
- * ============================================================ */
+   Shortcut exports for common roles
+   ============================================================ */
 
-// ✅ ใช้เฉพาะ admin เท่านั้น
+// Require admin only
 export const requireAdmin = requireRole("admin");
 
-// ✅ ใช้ได้ทั้ง staff และ admin
+// Require staff or admin
 export const requireStaffOrAdmin = requireRole("admin", "staff");
