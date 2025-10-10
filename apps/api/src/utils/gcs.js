@@ -1,50 +1,85 @@
-import { Storage } from "@google-cloud/storage";
+// ============================================================
+//  GOOGLE CLOUD STORAGE UTILITIES
+// ============================================================
+
 import fs from "fs";
+import { Storage } from "@google-cloud/storage";
 import { generateUniqueFileName } from "./fileName.js";
 
-const storage = new Storage({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT,
-});
+// ============================================================
+//  Initialize Google Cloud Storage client
+// ============================================================
+const projectId = process.env.GOOGLE_CLOUD_PROJECT;
 const bucketName = process.env.GCS_BUCKET_NAME;
+
+if (!projectId) console.warn("⚠️ Missing GOOGLE_CLOUD_PROJECT in .env");
+if (!bucketName) console.warn("⚠️ Missing GCS_BUCKET_NAME in .env");
+
+const storage = new Storage({ projectId });
 const bucket = storage.bucket(bucketName);
 
-/**
- * Upload file to GCS
- * Automatically generate unique filename using timestamp + random hash.
- */
+/* ============================================================
+   UPLOAD FILE TO GCS
+   - Auto-generate unique filename
+   - Delete temp file after upload
+   ============================================================ */
 export async function uploadToGCS(localPath, originalName) {
   const safeFileName = generateUniqueFileName(originalName);
   const destination = `uploads/${safeFileName}`;
 
-  await bucket.upload(localPath, { destination });
+  try {
+    await bucket.upload(localPath, {
+      destination,
+      resumable: false,
+      metadata: { cacheControl: "public, max-age=3600" }, // Cache 1 hour
+    });
 
-  if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
-
-  console.log("Uploaded to GCS:", destination);
-  return destination;
+    console.log(`✅ Uploaded to GCS: ${destination}`);
+    return safeFileName;
+  } catch (err) {
+    console.error("❌ Upload to GCS error:", err.message);
+    throw err;
+  } finally {
+    if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+  }
 }
 
-/**
- * Generate Signed URL (temporary public link)
- * ใช้สำหรับโหลดไฟล์แบบ private
- */
-export async function generateSignedUrl(filePath) {
-  const [url] = await bucket.file(filePath).getSignedUrl({
-    version: "v4",
-    action: "read",
-    expires: Date.now() + 10 * 60 * 1000, // 10 minutes
-  });
-  return url;
+/* ============================================================
+   GENERATE SIGNED URL
+   - Returns temporary (10-minute) public link
+   ============================================================ */
+export async function generateSignedUrl(fileName) {
+  const filePath = `uploads/${fileName}`;
+
+  try {
+    const [url] = await bucket.file(filePath).getSignedUrl({
+      version: "v4",
+      action: "read",
+      expires: Date.now() + 10 * 60 * 1000, // 10 minutes
+    });
+    return url;
+  } catch (err) {
+    console.error("❌ generateSignedUrl error:", err.message);
+    return null;
+  }
 }
 
-/**
- * Delete file from GCS (safe)
- */
-export async function deleteFromGCS(filePath) {
+/* ============================================================
+   DELETE FILE FROM GCS
+   - Safe delete (ignore not found)
+   ============================================================ */
+export async function deleteFromGCS(fileName) {
+  const filePath = `uploads/${fileName}`;
+
   try {
     await bucket.file(filePath).delete({ ignoreNotFound: true });
-    console.log(`Deleted from GCS: ${filePath}`);
+    console.log(`🗑️ Deleted from GCS: ${filePath}`);
   } catch (err) {
-    console.error("Delete GCS file error:", err.message);
+    if (err.code === 404) {
+      console.warn(`⚠️ File not found in GCS: ${filePath}`);
+      return;
+    }
+    console.error("❌ Delete GCS file error:", err.message);
+    throw err;
   }
 }
