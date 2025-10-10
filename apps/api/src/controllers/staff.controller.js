@@ -1,22 +1,31 @@
+// ============================================================
+//  STAFF CONTROLLER
+// ============================================================
+
 import models from "../models/index.js";
+import { Op } from "sequelize";
 import { hashPassword, verifyPassword } from "../utils/password.js";
 
 const { Staff } = models;
 
-// 🔹 Utility: สร้าง temporary password แบบสุ่ม
-function generateTempPassword(len = 12) {
+/* ============================================================
+   UTILITY: Generate temporary password
+   ============================================================ */
+function generateTempPassword(length = 12) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
-  return Array.from({ length: len })
+  return Array.from({ length })
     .map(() => chars[Math.floor(Math.random() * chars.length)])
     .join("");
 }
 
-// ✅ CREATE (with temp password option)
+/* ============================================================
+   CREATE STAFF (POST /api/staff)
+   - Generate temporary password if not provided
+   ============================================================ */
 export const createStaff = async (req, res) => {
   try {
     const { name, username, password, role, status } = req.body;
 
-    // ถ้า admin ไม่ส่ง password มา → generate temp password
     const plainPassword = password || generateTempPassword();
     const password_hash = await hashPassword(plainPassword);
 
@@ -26,10 +35,10 @@ export const createStaff = async (req, res) => {
       password_hash,
       role,
       status,
-      must_change_password: true, // ต้องมี field นี้ใน DB (BOOLEAN)
+      must_change_password: true,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Staff created successfully",
       staff: {
         id: staff.id,
@@ -38,14 +47,18 @@ export const createStaff = async (req, res) => {
         role: staff.role,
         status: staff.status,
       },
-      tempPassword: plainPassword, // ❗ แสดงครั้งเดียว
+      tempPassword: plainPassword, // Show once only
     });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+  } catch (error) {
+    console.error("POST /api/staff error:", error);
+    return res.status(400).json({ error: error.message });
   }
 };
 
-// ✅ READ ALL (with filters + pagination)
+/* ============================================================
+   GET ALL STAFF (GET /api/staff)
+   Support pagination, filters by role/status/search
+   ============================================================ */
 export const getAllStaff = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -54,8 +67,9 @@ export const getAllStaff = async (req, res) => {
     const { role, status, search } = req.query;
 
     const where = {};
-    if (role) where.role = role; // filter by role: "admin" | "staff"
-    if (status) where.status = status; // filter by status: "active" | "inactive"
+    if (role) where.role = role;
+    if (status) where.status = status;
+
     if (search) {
       where[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
@@ -71,7 +85,7 @@ export const getAllStaff = async (req, res) => {
       order: [["created_at", "DESC"]],
     });
 
-    res.json({
+    return res.json({
       data: rows,
       pagination: {
         total: count,
@@ -80,55 +94,70 @@ export const getAllStaff = async (req, res) => {
         totalPages: Math.ceil(count / limit),
       },
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("GET /api/staff error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ READ ONE
+/* ============================================================
+   GET STAFF BY ID (GET /api/staff/:id)
+   ============================================================ */
 export const getStaffById = async (req, res) => {
   try {
     const staff = await Staff.findByPk(req.params.id);
     if (!staff) return res.status(404).json({ error: "Staff not found" });
-    res.json(staff);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.json(staff);
+  } catch (error) {
+    console.error("GET /api/staff/:id error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ UPDATE
+/* ============================================================
+   UPDATE STAFF (PUT /api/staff/:id)
+   - Hash password if provided
+   ============================================================ */
 export const updateStaff = async (req, res) => {
   try {
     const staff = await Staff.findByPk(req.params.id);
     if (!staff) return res.status(404).json({ error: "Staff not found" });
 
     const updateData = { ...req.body };
+
     if (req.body.password) {
       updateData.password_hash = await hashPassword(req.body.password);
       delete updateData.password;
     }
 
     await staff.update(updateData);
-    res.json(staff);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.json(staff);
+  } catch (error) {
+    console.error("PUT /api/staff/:id error:", error);
+    return res.status(400).json({ error: error.message });
   }
 };
 
-// ✅ DELETE
+/* ============================================================
+   DELETE STAFF (DELETE /api/staff/:id)
+   ============================================================ */
 export const deleteStaff = async (req, res) => {
   try {
     const staff = await Staff.findByPk(req.params.id);
     if (!staff) return res.status(404).json({ error: "Staff not found" });
 
     await staff.destroy();
-    res.json({ message: "Staff deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.json({ message: "Staff deleted successfully" });
+  } catch (error) {
+    console.error("DELETE /api/staff/:id error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ RESET PASSWORD (admin ใช้ตอน staff ลืมรหัส)
+/* ============================================================
+   RESET PASSWORD (PATCH /api/staff/:id/reset)
+   Admin resets staff password (generate new temporary password)
+   ============================================================ */
 export const resetStaffPassword = async (req, res) => {
   try {
     const staff = await Staff.findByPk(req.params.id);
@@ -138,22 +167,26 @@ export const resetStaffPassword = async (req, res) => {
     const password_hash = await hashPassword(tempPassword);
 
     staff.password_hash = password_hash;
-    staff.must_change_password = true; // บังคับเปลี่ยนใหม่ (optional)
+    staff.must_change_password = true;
     await staff.save();
 
-    res.json({
-      message: "Temporary password generated (show once)",
-      tempPassword, // ❗ ส่งคืน admin ครั้งเดียว
+    return res.json({
+      message: "Temporary password generated (display once)",
+      tempPassword,
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("PATCH /api/staff/:id/reset error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// 🔹 CHANGE PASSWORD (staff ใช้เอง)
+/* ============================================================
+   CHANGE PASSWORD (PATCH /api/staff/change-password)
+   Used by staff (requires JWT)
+   ============================================================ */
 export const changePassword = async (req, res) => {
   try {
-    const staffId = req.user?.id; // ดึงจาก JWT middleware (requireStaffOrAdmin)
+    const staffId = req.user?.id; // Extracted from JWT
     const { oldPassword, newPassword } = req.body;
 
     if (!oldPassword || !newPassword) {
@@ -163,18 +196,18 @@ export const changePassword = async (req, res) => {
     const staff = await Staff.findByPk(staffId);
     if (!staff) return res.status(404).json({ error: "Staff not found" });
 
-    // ตรวจสอบรหัสเก่า
-    const ok = await verifyPassword(oldPassword, staff.password_hash);
-    if (!ok) return res.status(401).json({ error: "Old password is incorrect" });
+    // Verify old password
+    const match = await verifyPassword(oldPassword, staff.password_hash);
+    if (!match) return res.status(401).json({ error: "Old password is incorrect" });
 
-    // hash และบันทึกรหัสใหม่
+    // Update new password
     staff.password_hash = await hashPassword(newPassword);
-    staff.must_change_password = false; // ✅ ปิด flag หลังเปลี่ยนแล้ว
+    staff.must_change_password = false;
     await staff.save();
 
     return res.json({ message: "Password updated successfully" });
-  } catch (err) {
-    console.error("changePassword error:", err);
+  } catch (error) {
+    console.error("PATCH /api/staff/change-password error:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
