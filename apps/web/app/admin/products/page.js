@@ -203,13 +203,15 @@ export default function ProductsPage() {
                       <div className="relative mx-auto h-10 w-10 overflow-hidden rounded border bg-gray-100 sm:mx-0">
                         <Image
                           src={
-                            p.image_path && p.image_path.trim() !== ""
-                              ? p.image_path.startsWith("http")
-                                ? p.image_path
-                                : p.image_path.startsWith("/uploads")
+                            p.image_url
+                              ? p.image_url
+                              : p.image_path && p.image_path.trim() !== ""
+                                ? p.image_path.startsWith("http")
                                   ? p.image_path
-                                  : `/uploads/${p.image_path}`
-                              : "/images/placeholder.png"
+                                  : p.image_path.startsWith("/uploads")
+                                    ? p.image_path
+                                    : `/uploads/${p.image_path}`
+                                : "/images/placeholder.png"
                           }
                           alt={p.name || "Product image"}
                           fill
