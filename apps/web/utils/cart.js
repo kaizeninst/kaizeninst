@@ -3,7 +3,7 @@
 /* ============================================================
    Configurations
    ============================================================ */
-export const VAT_RATE = 0.07; // 7%
+export const VAT_RATE = 0.07; // no longer used but kept for reference
 
 /* ============================================================
    Internal Helpers
@@ -74,16 +74,16 @@ export const clearCart = () => {
 /* ============================================================
    Pricing Helpers
    ============================================================ */
-export function computeTotals(detailedItems, vatRate = VAT_RATE) {
+export function computeTotals(detailedItems) {
   // If hide_price is true (or 1), treat its price as 0
   const subtotal = detailedItems.reduce((sum, item) => {
     const price = item.hide_price ? 0 : Number(item.price || 0);
     return sum + price * Number(item.quantity || 0);
   }, 0);
 
-  const vat = subtotal * vatRate;
-  const total = subtotal + vat;
-  return { subtotal, vat, total };
+  // VAT removed, total equals subtotal
+  const total = subtotal;
+  return { subtotal, total };
 }
 
 export function formatTHB(value) {
