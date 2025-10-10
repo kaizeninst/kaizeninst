@@ -1,60 +1,63 @@
-// apps/api/src/controllers/auth.controller.js
+// ============================================================
+//  AUTH CONTROLLER
+// ============================================================
+
 import models from "../models/index.js";
 import { verifyPassword } from "../utils/password.js";
 import { signAdminToken } from "../utils/jwt.js";
 
 const { Staff } = models;
 
-/**
- * ✅ LOGIN (POST /api/auth/login)
- * ตรวจสอบ username / password → ออก JWT token (มี must_change_password)
- */
+/* ============================================================
+   LOGIN (POST /api/auth/login)
+   Validate credentials → issue JWT token (include must_change_password flag)
+   ============================================================ */
 export const login = async (req, res) => {
   try {
     const { username = "", password = "" } = req.body || {};
 
-    // 🔹 ตรวจว่ากรอกครบไหม
+    // Validate input
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
-    // 🔹 หา staff จากฐานข้อมูล
+    // Find staff record
     const staff = await Staff.findOne({ where: { username } });
     if (!staff) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // 🔹 ตรวจสถานะ (ต้อง active และเป็น role ที่อนุญาต)
+    // Check account status and allowed roles
     if (staff.status !== "active" || !["admin", "staff"].includes(staff.role)) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    // 🔹 ตรวจรหัสผ่าน
+    // Verify password hash
     const passwordOk = await verifyPassword(password, staff.password_hash || "");
     if (!passwordOk) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // 🔹 โหลดข้อมูลล่าสุดจากฐานข้อมูล (เผื่อเพิ่ง reset password)
+    // Reload in case of password reset
     await staff.reload();
 
-    // 🔹 สร้าง JWT พร้อม flag must_change_password
+    // Generate JWT token
     const token = signAdminToken(staff);
 
-    // 🔹 เซ็ต cookie (httpOnly)
+    // Set cookie
     res.cookie("accessToken", token, {
       httpOnly: true,
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24, // 1 วัน
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
       path: "/",
     });
 
-    // 🔹 อัปเดตเวลา last_login
+    // Update last login
     staff.last_login = new Date();
     await staff.save();
 
-    // 🔹 ส่ง response กลับ
+    // Response
     return res.json({
       message: "Login success",
       user: {
@@ -65,19 +68,18 @@ export const login = async (req, res) => {
         must_change_password: staff.must_change_password,
       },
     });
-  } catch (err) {
-    console.error("POST /api/auth/login error:", err);
+  } catch (error) {
+    console.error("POST /api/auth/login error:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-/**
- * ✅ ME (GET /api/auth/me)
- * ใช้ตรวจสอบ JWT ใน cookie / header
- */
+/* ============================================================
+   ME (GET /api/auth/me)
+   Verify JWT from cookie or Authorization header
+   ============================================================ */
 export const getMe = (req, res) => {
   try {
-    // 🔹 ดึง token จาก cookie หรือ header
     const accessToken =
       req.cookies?.accessToken || req.headers.authorization?.replace(/^Bearer\s+/i, "");
 
@@ -85,7 +87,7 @@ export const getMe = (req, res) => {
       return res.status(200).json({ authenticated: false });
     }
 
-    // 🔹 ถอดรหัส JWT (อ่าน payload)
+    // Decode JWT payload (non-verified, only for info)
     const base64 = accessToken.split(".")[1];
     const payload = JSON.parse(Buffer.from(base64, "base64").toString("utf8") || "{}");
 
@@ -93,15 +95,16 @@ export const getMe = (req, res) => {
       authenticated: true,
       user: payload,
     });
-  } catch {
+  } catch (error) {
+    console.error("GET /api/auth/me error:", error);
     return res.json({ authenticated: false });
   }
 };
 
-/**
- * ✅ LOGOUT (POST /api/auth/logout)
- * เคลียร์ cookie accessToken ออกจาก browser
- */
+/* ============================================================
+   LOGOUT (POST /api/auth/logout)
+   Clear accessToken cookie from browser
+   ============================================================ */
 export const logout = (req, res) => {
   res.clearCookie("accessToken", {
     sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
