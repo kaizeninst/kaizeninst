@@ -9,8 +9,6 @@ import { getCart, computeTotals, formatTHB, clearCart } from "@/utils/cart";
 /* ============================================================
    REQUEST QUOTE PAGE COMPONENT
    ============================================================ */
-const VAT_RATE = 0.07; // 7%
-
 export default function RequestQuotePage() {
   const router = useRouter();
 
@@ -49,14 +47,16 @@ export default function RequestQuotePage() {
       const result = await response.json();
       const productMap = new Map((result?.data || []).map((product) => [product.id, product]));
 
+      // Map local cart items with product details
       const detailedCartItems = baseCartItems.map((cartRow) => {
         const product = productMap.get(cartRow.id);
         return {
           id: cartRow.id,
           quantity: Number(cartRow.quantity || 1),
           name: product?.name || "Unnamed Product",
-          price: Number(product?.price || 0),
+          price: product?.hide_price ? 0 : Number(product?.price || 0), // if hide_price = 1 → show 0
           image: product?.image_path || "",
+          hide_price: !!product?.hide_price,
         };
       });
 
@@ -95,14 +95,7 @@ export default function RequestQuotePage() {
     [cartItems]
   );
 
-  const { subtotal, vat, total } = useMemo(
-    () =>
-      computeTotals(
-        cartItems.map((item) => ({ ...item })),
-        VAT_RATE
-      ),
-    [cartItems]
-  );
+  const { subtotal, total } = useMemo(() => computeTotals(cartItems), [cartItems]);
 
   /* ------------------------------------------------------------
      Handle Form Input Change
@@ -140,7 +133,6 @@ export default function RequestQuotePage() {
         QuoteItems: quoteItems,
       };
 
-      // Send to API endpoint
       const response = await fetch("/api/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -153,7 +145,6 @@ export default function RequestQuotePage() {
         throw new Error(errorResponse?.error || "Failed to submit quote request.");
       }
 
-      // Clear cart and navigate to success page
       clearCart();
       router.push("/quote/success");
     } catch (error) {
@@ -169,9 +160,7 @@ export default function RequestQuotePage() {
      ------------------------------------------------------------ */
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* ------------------------------------------------------------
-         Page Header
-         ------------------------------------------------------------ */}
+      {/* Page Header */}
       <div className="mb-8 flex flex-col items-center justify-center text-center">
         <div className="h-18 w-18 mx-auto mb-4 flex items-center justify-center rounded-md bg-red-100">
           <MessageSquare className="h-10 w-10 text-red-600" />
@@ -182,13 +171,9 @@ export default function RequestQuotePage() {
         </p>
       </div>
 
-      {/* ------------------------------------------------------------
-         Two-Column Layout: Items + Contact Form
-         ------------------------------------------------------------ */}
+      {/* Two-Column Layout: Items + Contact Form */}
       <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        {/* ------------------------------------------------------------
-           Left Column: Cart Items for Quote
-           ------------------------------------------------------------ */}
+        {/* Left Column: Cart Items for Quote */}
         <section className="space-y-4 rounded-lg bg-gray-50 p-6 shadow-md">
           <h2 className="text-2xl font-bold">Items for Quote</h2>
 
@@ -220,11 +205,6 @@ export default function RequestQuotePage() {
               <span>{formatTHB(subtotal)}</span>
             </div>
 
-            <div className="flex justify-between text-gray-700">
-              <span>Estimated Tax</span>
-              <span>{formatTHB(vat)}</span>
-            </div>
-
             <div className="flex justify-between text-xl font-bold text-black">
               <span>Estimated Total</span>
               <span className="text-[#A90000]">{formatTHB(total)}</span>
@@ -239,9 +219,7 @@ export default function RequestQuotePage() {
           </div>
         </section>
 
-        {/* ------------------------------------------------------------
-           Right Column: Contact Form
-           ------------------------------------------------------------ */}
+        {/* Right Column: Contact Form */}
         <section className="rounded-lg bg-white p-6 shadow-md">
           <h2 className="mb-4 text-2xl font-bold">Contact Information</h2>
 
