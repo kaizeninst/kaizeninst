@@ -1,18 +1,22 @@
-// apps/api/src/middleware/maybeAuth.js
+// ============================================================
+//  MAYBE AUTH MIDDLEWARE
+// ============================================================
+
 import { requireStaffOrAdmin } from "./auth.js";
 
-/**
- * ใช้แทน middleware auth ปกติ
- * - ถ้า NODE_ENV=production → ใช้ requireStaffOrAdmin จริง
- * - ถ้า NODE_ENV=development → ข้าม auth (เรียก next() ทันที)
- */
+/* ============================================================
+   Middleware: optionally require authentication
+   - In production → enforce staff/admin authentication
+   - In development → skip authentication entirely
+   ============================================================ */
 export function maybeAuth(req, res, next) {
-  const isProd = process.env.NODE_ENV === "production";
+  const isProduction = process.env.NODE_ENV === "production";
 
-  if (isProd) {
+  if (isProduction) {
+    // Use normal authentication in production
     return requireStaffOrAdmin(req, res, next);
   }
 
-  // dev mode: ไม่เช็ค token เลย
+  // Skip auth in development
   return next();
 }
