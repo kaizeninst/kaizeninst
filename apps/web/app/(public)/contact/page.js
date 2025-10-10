@@ -1,57 +1,91 @@
 "use client";
+
 import { useState, useMemo } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
+/* ============================================================
+   CONTACT PAGE COMPONENT
+   ============================================================ */
 export default function ContactPage() {
+  /* ------------------------------------------------------------
+     State Management
+     ------------------------------------------------------------ */
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     subject: "",
     message: "",
-    hp: "", // honeypot
+    honeypot: "", // hidden honeypot field for spam prevention
   });
-  const [status, setStatus] = useState({ state: "idle", msg: "" }); // idle | loading | success | error
 
-  const isValid = useMemo(() => {
+  const [formStatus, setFormStatus] = useState({
+    state: "idle", // idle | loading | success | error
+    message: "",
+  });
+
+  /* ------------------------------------------------------------
+     Form Validation
+     ------------------------------------------------------------ */
+  const isFormValid = useMemo(() => {
     const { fullName, email, subject, message } = formData;
-    return fullName.trim() && /\S+@\S+\.\S+/.test(email) && subject.trim() && message.trim();
+    const isEmailValid = /\S+@\S+\.\S+/.test(email);
+    return fullName.trim() && isEmailValid && subject.trim() && message.trim();
   }, [formData]);
 
-  function handleChange(e) {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  /* ------------------------------------------------------------
+     Event Handlers
+     ------------------------------------------------------------ */
+  function handleInputChange(event) {
+    const { name, value } = event.target;
+    setFormData((previousData) => ({ ...previousData, [name]: value }));
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!isValid) return;
-    setStatus({ state: "loading", msg: "" });
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (!isFormValid) return;
+
+    setFormStatus({ state: "loading", message: "" });
 
     try {
-      const res = await fetch("/api/email/contact", {
+      const response = await fetch("/api/email/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || "Failed to send message");
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error || "Failed to send message");
 
-      setStatus({
+      setFormStatus({
         state: "success",
-        msg: "Your message has been sent. We'll get back to you shortly.",
+        message: "Your message has been sent. We'll get back to you shortly.",
       });
-      setFormData({ fullName: "", email: "", subject: "", message: "", hp: "" });
-    } catch (err) {
-      setStatus({ state: "error", msg: err.message || "Something went wrong" });
+
+      setFormData({
+        fullName: "",
+        email: "",
+        subject: "",
+        message: "",
+        honeypot: "",
+      });
+    } catch (error) {
+      setFormStatus({
+        state: "error",
+        message: error.message || "Something went wrong. Please try again later.",
+      });
     }
   }
 
+  /* ------------------------------------------------------------
+     JSX Structure
+     ------------------------------------------------------------ */
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div className="mx-auto max-w-6xl px-6 py-12 sm:px-8 md:px-12 lg:px-16">
-        {/* Heading */}
+        {/* ------------------------------------------------------------
+           Page Heading
+           ------------------------------------------------------------ */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -66,8 +100,10 @@ export default function ContactPage() {
           </p>
         </motion.div>
 
-        {/* Status banners */}
-        {status.state === "success" && (
+        {/* ------------------------------------------------------------
+           Status Banners
+           ------------------------------------------------------------ */}
+        {formStatus.state === "success" && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -75,10 +111,11 @@ export default function ContactPage() {
             style={{ background: "color-mix(in srgb, #22c55e 15%, white)", color: "#166534" }}
           >
             <CheckCircle2 className="h-5 w-5" />
-            <span className="font-medium">{status.msg}</span>
+            <span className="font-medium">{formStatus.message}</span>
           </motion.div>
         )}
-        {status.state === "error" && (
+
+        {formStatus.state === "error" && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -89,12 +126,17 @@ export default function ContactPage() {
             }}
           >
             <AlertCircle className="h-5 w-5" />
-            <span className="font-medium">{status.msg}</span>
+            <span className="font-medium">{formStatus.message}</span>
           </motion.div>
         )}
 
+        {/* ------------------------------------------------------------
+           Two-Column Layout: Form + Contact Information
+           ------------------------------------------------------------ */}
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          {/* Form */}
+          {/* ------------------------------------------------------------
+             Contact Form
+             ------------------------------------------------------------ */}
           <motion.div
             initial={{ opacity: 0, y: 22 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -107,15 +149,16 @@ export default function ContactPage() {
             }}
           >
             <h2 className="mb-5 text-2xl font-semibold text-[var(--foreground)]">
-              Send us a message
+              Send Us a Message
             </h2>
+
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Honeypot (hidden) */}
+              {/* Hidden Honeypot Field */}
               <input
                 type="text"
-                name="hp"
-                value={formData.hp}
-                onChange={handleChange}
+                name="honeypot"
+                value={formData.honeypot}
+                onChange={handleInputChange}
                 className="hidden"
                 autoComplete="off"
                 tabIndex={-1}
@@ -134,16 +177,11 @@ export default function ContactPage() {
                   id="fullName"
                   name="fullName"
                   value={formData.fullName}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full rounded-xl border bg-white px-3 py-2 shadow-sm outline-none transition"
                   style={{
                     borderColor: "color-mix(in srgb, var(--secondary) 30%, transparent)",
                   }}
-                  onFocus={(e) =>
-                    (e.currentTarget.style.boxShadow =
-                      "0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent)")
-                  }
-                  onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
                   required
                 />
               </div>
@@ -161,14 +199,11 @@ export default function ContactPage() {
                   id="email"
                   name="email"
                   value={formData.email}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full rounded-xl border bg-white px-3 py-2 shadow-sm outline-none transition"
-                  style={{ borderColor: "color-mix(in srgb, var(--secondary) 30%, transparent)" }}
-                  onFocus={(e) =>
-                    (e.currentTarget.style.boxShadow =
-                      "0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent)")
-                  }
-                  onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
+                  style={{
+                    borderColor: "color-mix(in srgb, var(--secondary) 30%, transparent)",
+                  }}
                   required
                 />
               </div>
@@ -186,14 +221,11 @@ export default function ContactPage() {
                   id="subject"
                   name="subject"
                   value={formData.subject}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full rounded-xl border bg-white px-3 py-2 shadow-sm outline-none transition"
-                  style={{ borderColor: "color-mix(in srgb, var(--secondary) 30%, transparent)" }}
-                  onFocus={(e) =>
-                    (e.currentTarget.style.boxShadow =
-                      "0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent)")
-                  }
-                  onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
+                  style={{
+                    borderColor: "color-mix(in srgb, var(--secondary) 30%, transparent)",
+                  }}
                   required
                 />
               </div>
@@ -211,14 +243,11 @@ export default function ContactPage() {
                   name="message"
                   rows={5}
                   value={formData.message}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                   className="mt-1 block w-full resize-y rounded-xl border bg-white px-3 py-2 shadow-sm outline-none transition"
-                  style={{ borderColor: "color-mix(in srgb, var(--secondary) 30%, transparent)" }}
-                  onFocus={(e) =>
-                    (e.currentTarget.style.boxShadow =
-                      "0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent)")
-                  }
-                  onBlur={(e) => (e.currentTarget.style.boxShadow = "none")}
+                  style={{
+                    borderColor: "color-mix(in srgb, var(--secondary) 30%, transparent)",
+                  }}
                   required
                 />
               </div>
@@ -227,7 +256,7 @@ export default function ContactPage() {
               <motion.button
                 whileHover={{ y: -1 }}
                 whileTap={{ scale: 0.98 }}
-                disabled={!isValid || status.state === "loading"}
+                disabled={!isFormValid || formStatus.state === "loading"}
                 type="submit"
                 className="group inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 font-medium text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
@@ -236,7 +265,7 @@ export default function ContactPage() {
                     "0 10px 20px -10px color-mix(in srgb, var(--primary) 60%, transparent)",
                 }}
               >
-                {status.state === "loading" ? (
+                {formStatus.state === "loading" ? (
                   <>
                     <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
                       <circle
@@ -266,7 +295,9 @@ export default function ContactPage() {
             </form>
           </motion.div>
 
-          {/* Contact Info */}
+          {/* ------------------------------------------------------------
+             Contact Information Section
+             ------------------------------------------------------------ */}
           <motion.div
             initial={{ opacity: 0, y: 22 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -278,9 +309,10 @@ export default function ContactPage() {
               border: "1px solid color-mix(in srgb, var(--secondary) 12%, transparent)",
             }}
           >
-            <h2 className="mb-5 text-2xl font-semibold text-[var(--foreground)]">Get in touch</h2>
+            <h2 className="mb-5 text-2xl font-semibold text-[var(--foreground)]">Get in Touch</h2>
 
             <div className="space-y-6">
+              {/* Email */}
               <motion.div
                 whileHover={{ scale: 1.01 }}
                 className="flex items-start gap-4 rounded-xl bg-white p-4 shadow-sm"
@@ -297,6 +329,7 @@ export default function ContactPage() {
                 </div>
               </motion.div>
 
+              {/* Phone */}
               <motion.div
                 whileHover={{ scale: 1.01 }}
                 className="flex items-start gap-4 rounded-xl bg-white p-4 shadow-sm"
@@ -314,6 +347,7 @@ export default function ContactPage() {
                 </div>
               </motion.div>
 
+              {/* Address */}
               <motion.div
                 whileHover={{ scale: 1.01 }}
                 className="flex items-start gap-4 rounded-xl bg-white p-4 shadow-sm"
