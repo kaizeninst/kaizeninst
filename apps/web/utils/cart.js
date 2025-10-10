@@ -1,20 +1,25 @@
 // utils/cart.js
 
-// ====== Configs ======
-export const VAT_RATE = 0.07; // 7% (change as needed)
+/* ============================================================
+   Configurations
+   ============================================================ */
+export const VAT_RATE = 0.07; // 7%
 
-// ====== Internal helpers ======
+/* ============================================================
+   Internal Helpers
+   ============================================================ */
 function notifyCartChanged() {
-  // Defer to avoid setState during another component's render phase
+  // Defer dispatch to avoid triggering setState during render
   setTimeout(() => {
     try {
       window.dispatchEvent(new CustomEvent("cart:change"));
-      // Do NOT dispatch synthetic 'storage' — browser fires it only across tabs.
     } catch {}
   }, 0);
 }
 
-// ====== Minimal localStorage CRUD ({ id, quantity }) ======
+/* ============================================================
+   Minimal localStorage CRUD ({ id, quantity })
+   ============================================================ */
 export const getCart = () => {
   if (typeof window === "undefined") return [];
   try {
@@ -32,19 +37,21 @@ export const saveCart = (cart) => {
 
 export const addToCart = (productId, quantity = 1) => {
   const cart = getCart();
-  const idx = cart.findIndex((i) => i.id === productId);
+  const index = cart.findIndex((item) => item.id === productId);
   const q = Math.max(1, Number(quantity || 1));
-  if (idx > -1) {
-    cart[idx].quantity = Math.max(1, Number(cart[idx].quantity || 1) + q);
+
+  if (index > -1) {
+    cart[index].quantity = Math.max(1, Number(cart[index].quantity || 1) + q);
   } else {
     cart.push({ id: productId, quantity: q });
   }
+
   saveCart(cart);
   return cart;
 };
 
 export const removeFromCart = (productId) => {
-  const next = getCart().filter((i) => i.id !== productId);
+  const next = getCart().filter((item) => item.id !== productId);
   saveCart(next);
   return next;
 };
@@ -52,8 +59,9 @@ export const removeFromCart = (productId) => {
 export const updateQuantity = (productId, quantity) => {
   const q = Math.max(1, Number(quantity || 1));
   const next = getCart()
-    .map((i) => (i.id === productId ? { ...i, quantity: q } : i))
-    .filter((i) => Number(i.quantity) > 0);
+    .map((item) => (item.id === productId ? { ...item, quantity: q } : item))
+    .filter((item) => Number(item.quantity) > 0);
+
   saveCart(next);
   return next;
 };
@@ -63,27 +71,33 @@ export const clearCart = () => {
   return [];
 };
 
-// ====== Pricing helpers ======
+/* ============================================================
+   Pricing Helpers
+   ============================================================ */
 export function computeTotals(detailedItems, vatRate = VAT_RATE) {
-  const subtotal = detailedItems.reduce(
-    (sum, it) => sum + Number(it.price || 0) * Number(it.quantity || 0),
-    0
-  );
+  // If hide_price is true (or 1), treat its price as 0
+  const subtotal = detailedItems.reduce((sum, item) => {
+    const price = item.hide_price ? 0 : Number(item.price || 0);
+    return sum + price * Number(item.quantity || 0);
+  }, 0);
+
   const vat = subtotal * vatRate;
   const total = subtotal + vat;
   return { subtotal, vat, total };
 }
 
 export function formatTHB(value) {
-  const n = Number(value || 0);
+  const numberValue = Number(value || 0);
   return `THB ${new Intl.NumberFormat("th-TH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(n)}`;
+  }).format(numberValue)}`;
 }
 
-// ====== Data hydration (fetch latest prices/details) ======
-// Returns: [{ id, quantity, name, price, image }]
+/* ============================================================
+   Data Hydration (Fetch Latest Prices/Details)
+   ============================================================ */
+// Returns: [{ id, quantity, name, price, image, hide_price }]
 export async function getCartDetailed() {
   const base = getCart();
   if (!base.length) return [];
@@ -93,22 +107,25 @@ export async function getCartDetailed() {
       try {
         const res = await fetch(`/api/products/${row.id}`, { cache: "no-store" });
         const json = await res.json();
-        const p = json?.data || json;
+        const product = json?.data || json;
+
         return {
           id: row.id,
           quantity: Number(row.quantity || 1),
-          name: p?.name || "Unnamed product",
-          price: Number(p?.price || 0), // always use latest backend price
-          image: p?.image_path || "",
+          name: product?.name || "Unnamed product",
+          price: Number(product?.price || 0),
+          image: product?.image_path || "",
+          hide_price: !!product?.hide_price, // normalize to boolean
         };
       } catch {
-        // Fallback if API fails
+        // Fallback if product fetch fails
         return {
           id: row.id,
           quantity: Number(row.quantity || 1),
           name: "Unknown",
           price: 0,
           image: "",
+          hide_price: false,
         };
       }
     })
@@ -117,18 +134,22 @@ export async function getCartDetailed() {
   return detailed;
 }
 
-// ====== Optional UX helper ======
+/* ============================================================
+   UX Helper
+   ============================================================ */
 // Add with a quick snapshot (still re-priced later via getCartDetailed)
 export const addToCartWithSnapshot = (product, quantity = 1) => {
-  // product: { id, name?, price?, image? } — we still store minimal fields to avoid stale price
+  // product: { id, name?, price?, image? }
   const cart = getCart();
-  const idx = cart.findIndex((i) => i.id === product.id);
+  const index = cart.findIndex((item) => item.id === product.id);
   const q = Math.max(1, Number(quantity || 1));
-  if (idx > -1) {
-    cart[idx].quantity = Math.max(1, Number(cart[idx].quantity || 1) + q);
+
+  if (index > -1) {
+    cart[index].quantity = Math.max(1, Number(cart[index].quantity || 1) + q);
   } else {
     cart.push({ id: product.id, quantity: q });
   }
+
   saveCart(cart);
   return cart;
 };

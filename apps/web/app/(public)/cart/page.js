@@ -19,7 +19,7 @@ export default function CartPage() {
   /* ------------------------------------------------------------
      State Management
      ------------------------------------------------------------ */
-  const [cartItems, setCartItems] = useState([]); // [{ id, name, price, image, quantity }]
+  const [cartItems, setCartItems] = useState([]); // [{ id, name, price, image, quantity, hide_price }]
 
   /* ------------------------------------------------------------
      Load Cart Data from Local Storage or API
@@ -44,7 +44,6 @@ export default function CartPage() {
 
   /* ------------------------------------------------------------
      Update Item Quantity
-     (Defer side-effect to avoid React state race condition)
      ------------------------------------------------------------ */
   function handleQuantityChange(productId, delta) {
     setCartItems((previousItems) => {
@@ -62,7 +61,6 @@ export default function CartPage() {
 
   /* ------------------------------------------------------------
      Remove Item from Cart
-     (Defer side-effect to keep state updates clean)
      ------------------------------------------------------------ */
   function handleRemoveItem(productId) {
     setCartItems((previousItems) => previousItems.filter((item) => item.id !== productId));
@@ -98,7 +96,9 @@ export default function CartPage() {
           {cartItems.length > 0 ? (
             <ul className="space-y-4">
               {cartItems.map((item) => {
-                const lineTotal = Number(item.price || 0) * Number(item.quantity || 0);
+                // If hide_price is true, treat price as 0
+                const displayedPrice = item.hide_price ? 0 : Number(item.price || 0);
+                const lineTotal = displayedPrice * Number(item.quantity || 0);
 
                 return (
                   <li key={item.id} className="rounded-lg border bg-white p-4 shadow-sm">
@@ -122,7 +122,7 @@ export default function CartPage() {
                       {/* Product Name and Unit Price */}
                       <div className="flex-1">
                         <div className="font-medium">{item.name}</div>
-                        <div className="text-primary text-sm">{formatTHB(item.price)}</div>
+                        <div className="text-primary text-sm">{formatTHB(displayedPrice)}</div>
                       </div>
 
                       {/* Quantity Control */}
