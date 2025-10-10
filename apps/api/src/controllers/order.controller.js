@@ -1,34 +1,39 @@
+// ============================================================
+//  ORDER CONTROLLER
+// ============================================================
+
 import models from "../models/index.js";
 import { Op } from "sequelize";
+
 const { Order, OrderItem, Product } = models;
 
-// ✅ CREATE ORDER
+/* ============================================================
+   CREATE ORDER (POST /api/orders)
+   ============================================================ */
 export const createOrder = async (req, res) => {
   try {
     const { OrderItems, ...orderData } = req.body;
 
-    // 1️⃣ ตรวจว่ามีสินค้าไหม
+    // Validate items
     if (!OrderItems || !Array.isArray(OrderItems) || OrderItems.length === 0) {
       return res.status(400).json({ error: "OrderItems are required" });
     }
 
-    // 2️⃣ สร้าง order หลักก่อน (ยังไม่รู้ total)
+    // Create main order (initial total = 0)
     const order = await Order.create({ ...orderData, total: 0 });
 
     let grandTotal = 0;
 
-    // 3️⃣ loop ทุก OrderItem
+    // Loop through each item
     for (const item of OrderItems) {
       const product = await Product.findByPk(item.product_id);
 
       if (!product) {
         await order.destroy();
-        return res.status(400).json({
-          error: `Product with id ${item.product_id} not found`,
-        });
+        return res.status(400).json({ error: `Product with id ${item.product_id} not found` });
       }
 
-      // ✅ ถ้า hide_price = true → ใช้ product.price ในฐานข้อมูลคำนวณจริง
+      // Use item.unit_price if provided, otherwise product.price
       const unitPrice =
         item.unit_price > 0 ? parseFloat(item.unit_price) : parseFloat(product.price || 0);
 
@@ -44,23 +49,26 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    // 4️⃣ อัปเดตยอดรวมทั้งหมดใน order
+    // Update order total
     order.total = grandTotal;
     await order.save();
 
-    // 5️⃣ ดึงข้อมูลพร้อม items กลับไปให้ frontend
+    // Return full order with items
     const newOrder = await Order.findByPk(order.id, {
       include: [{ model: OrderItem, include: [Product] }],
     });
 
-    res.status(201).json(newOrder);
-  } catch (err) {
-    console.error("Create order error:", err);
-    res.status(400).json({ error: err.message });
+    return res.status(201).json(newOrder);
+  } catch (error) {
+    console.error("POST /api/orders error:", error);
+    return res.status(400).json({ error: error.message });
   }
 };
 
-// ✅ READ ALL (with filters + pagination)
+/* ============================================================
+   GET ALL ORDERS (GET /api/orders)
+   Support pagination, filters (status, payment, search)
+   ============================================================ */
 export const getAllOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -86,7 +94,7 @@ export const getAllOrders = async (req, res) => {
       include: [{ model: OrderItem, include: [Product] }],
     });
 
-    res.json({
+    return res.json({
       data: rows,
       pagination: {
         total: count,
@@ -95,25 +103,32 @@ export const getAllOrders = async (req, res) => {
         totalPages: Math.ceil(count / limit),
       },
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("GET /api/orders error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ READ ONE
+/* ============================================================
+   GET ORDER BY ID (GET /api/orders/:id)
+   ============================================================ */
 export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id, {
       include: [{ model: OrderItem, include: [Product] }],
     });
     if (!order) return res.status(404).json({ error: "Order not found" });
-    res.json(order);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.json(order);
+  } catch (error) {
+    console.error("GET /api/orders/:id error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ UPDATE
+/* ============================================================
+   UPDATE ORDER (PUT /api/orders/:id)
+   Replace items and update main order fields
+   ============================================================ */
 export const updateOrder = async (req, res) => {
   try {
     const { OrderItems, ...orderData } = req.body;
@@ -121,21 +136,19 @@ export const updateOrder = async (req, res) => {
     const order = await Order.findByPk(req.params.id, { include: [OrderItem] });
     if (!order) return res.status(404).json({ error: "Order not found" });
 
-    // อัปเดตข้อมูลหลัก
+    // Update main order info
     await order.update(orderData);
 
     if (OrderItems && Array.isArray(OrderItems)) {
-      // ลบ items เก่าออก
+      // Remove old items
       await OrderItem.destroy({ where: { order_id: order.id } });
 
-      // เพิ่มใหม่
+      // Recreate items
       for (const item of OrderItems) {
         const product = await Product.findByPk(item.product_id);
 
         if (!product) {
-          return res.status(400).json({
-            error: `Product with id ${item.product_id} not found`,
-          });
+          return res.status(400).json({ error: `Product with id ${item.product_id} not found` });
         }
 
         const unitPrice = parseFloat(item.unit_price || product.price || 0);
@@ -155,26 +168,32 @@ export const updateOrder = async (req, res) => {
       include: [{ model: OrderItem, include: [Product] }],
     });
 
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    return res.json(updated);
+  } catch (error) {
+    console.error("PUT /api/orders/:id error:", error);
+    return res.status(400).json({ error: error.message });
   }
 };
 
-// ✅ DELETE
+/* ============================================================
+   DELETE ORDER (DELETE /api/orders/:id)
+   ============================================================ */
 export const deleteOrder = async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ error: "Order not found" });
 
     await order.destroy();
-    res.json({ message: "Order deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.json({ message: "Order deleted successfully" });
+  } catch (error) {
+    console.error("DELETE /api/orders/:id error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ UPDATE STATUS
+/* ============================================================
+   UPDATE ORDER STATUS (PATCH /api/orders/:id/status)
+   ============================================================ */
 export const updateOrderStatus = async (req, res) => {
   try {
     const { order_status } = req.body;
@@ -190,36 +209,16 @@ export const updateOrderStatus = async (req, res) => {
     if (!order) return res.status(404).json({ error: "Order not found" });
 
     await order.update({ order_status });
-    res.json({ message: "Status updated successfully", order });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.json({ message: "Status updated successfully", order });
+  } catch (error) {
+    console.error("PATCH /api/orders/:id/status error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ SUMMARY
-export const getOrderSummary = async (_req, res) => {
-  try {
-    const statuses = ["pending", "processing", "shipped", "delivered"];
-
-    const counts = await Promise.all(
-      statuses.map((s) => Order.count({ where: { order_status: s } }))
-    );
-
-    const total = await Order.count();
-
-    res.json({
-      total,
-      pending: counts[0],
-      processing: counts[1],
-      shipped: counts[2],
-      delivered: counts[3],
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// ✅ UPDATE PAYMENT STATUS
+/* ============================================================
+   UPDATE PAYMENT STATUS (PATCH /api/orders/:id/payment)
+   ============================================================ */
 export const updatePaymentStatus = async (req, res) => {
   try {
     const { payment_status } = req.body;
@@ -235,8 +234,36 @@ export const updatePaymentStatus = async (req, res) => {
     if (!order) return res.status(404).json({ error: "Order not found" });
 
     await order.update({ payment_status });
-    res.json({ message: "Payment status updated successfully", order });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.json({ message: "Payment status updated successfully", order });
+  } catch (error) {
+    console.error("PATCH /api/orders/:id/payment error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+/* ============================================================
+   ORDER SUMMARY (GET /api/orders/summary)
+   Count total per status
+   ============================================================ */
+export const getOrderSummary = async (_req, res) => {
+  try {
+    const statuses = ["pending", "processing", "shipped", "delivered"];
+
+    const counts = await Promise.all(
+      statuses.map((s) => Order.count({ where: { order_status: s } }))
+    );
+
+    const total = await Order.count();
+
+    return res.json({
+      total,
+      pending: counts[0],
+      processing: counts[1],
+      shipped: counts[2],
+      delivered: counts[3],
+    });
+  } catch (error) {
+    console.error("GET /api/orders/summary error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
