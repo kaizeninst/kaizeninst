@@ -183,10 +183,6 @@ export default function CartPage() {
               <span>Subtotal</span>
               <span>{formatTHB(subtotal)}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span>Tax</span>
-              <span>{formatTHB(vat)}</span>
-            </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between border-t pt-4 text-lg font-bold">
