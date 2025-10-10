@@ -1,4 +1,7 @@
-// apps/api/src/index.js
+// ============================================================
+//  KAIZENINST API SERVER (Express.js)
+// ============================================================
+
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -7,6 +10,8 @@ import cookieParser from "cookie-parser";
 import path from "path";
 
 import { testConnection, sequelize } from "./db/sequelize.js";
+
+// Routes
 import authRoute from "./routes/auth.js";
 import categoryRoutes from "./routes/categories.js";
 import productRoutes from "./routes/products.js";
@@ -18,7 +23,11 @@ import fileRoutes from "./routes/files.js";
 
 const app = express();
 
-// Trust proxy (for cookies / HTTPS header forwarding)
+/* ============================================================
+   Express configuration
+   ============================================================ */
+
+// Enable proxy trust (for HTTPS and cookie forwarding)
 app.set("trust proxy", 1);
 
 // Security headers
@@ -28,14 +37,14 @@ app.use(
   })
 );
 
-// Body parsers
+// JSON & URL-encoded parsers
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 // Cookie parser
 app.use(cookieParser());
 
-// CORS
+// CORS configuration
 app.use(
   cors({
     origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:3000"],
@@ -43,27 +52,30 @@ app.use(
   })
 );
 
-// Serve uploaded images (local dev mode only)
+/* ============================================================
+   Static file serving (uploads)
+   ============================================================ */
 if (process.env.STORAGE_MODE === "local") {
   const uploadsDir = path.join(process.cwd(), "public/uploads");
   app.use("/uploads", express.static(uploadsDir));
-  console.log("📁 Serving local uploads from:", uploadsDir);
+  console.log("[Static] Serving local uploads from:", uploadsDir);
 }
 
-// Health check
+/* ============================================================
+   Health check endpoint
+   ============================================================ */
 app.get("/health", async (_req, res) => {
   try {
     await sequelize.authenticate();
-    res.json({ ok: true, db: true });
+    return res.json({ ok: true, db: true });
   } catch {
-    res.json({ ok: true, db: false });
+    return res.json({ ok: true, db: false });
   }
 });
 
-// Serve static files for uploaded images
-app.use("/uploads", express.static(path.join(process.cwd(), "apps/api/public/uploads")));
-
-// API Routes
+/* ============================================================
+   API Routes
+   ============================================================ */
 app.use("/api/auth", authRoute);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
@@ -73,7 +85,9 @@ app.use("/api/staff", staffRoutes);
 app.use("/api/email", emailRoutes);
 app.use("/api/files", fileRoutes);
 
-// 404 handler for API routes
+/* ============================================================
+   404 handler for API routes
+   ============================================================ */
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({ error: "Not found" });
@@ -81,19 +95,25 @@ app.use((req, res, next) => {
   next();
 });
 
-// Global error handler
-app.use((err, _req, res, next) => {
+/* ============================================================
+   Global error handler
+   ============================================================ */
+app.use((err, _req, res, _next) => {
   if (err?.type === "entity.parse.failed") {
     return res.status(400).json({ error: "Invalid JSON" });
   }
-  console.error("❌ Server Error:", err);
+
+  console.error("[Server Error]:", err);
   return res.status(500).json({ error: "Internal server error" });
 });
 
-// Start server
+/* ============================================================
+   Start server
+   ============================================================ */
 const PORT = process.env.PORT || 4000;
+
 app.listen(PORT, async () => {
   await testConnection();
-  await sequelize.sync(); // sync models automatically (dev only)
-  console.log(`🚀 API listening on http://localhost:${PORT}`);
+  await sequelize.sync(); // Auto-sync models in dev mode
+  console.log(`🚀 API running at: http://localhost:${PORT}`);
 });
