@@ -1,16 +1,20 @@
+// ============================================================
+//  PRODUCT CONTROLLER
+// ============================================================
+
 import fs from "fs";
 import path from "path";
-import models from "../models/index.js";
 import { Op } from "sequelize";
+import models from "../models/index.js";
 import { getSelfAndDescendantIds } from "../utils/categoryTree.js";
 import { generateUniqueFileName } from "../utils/fileName.js";
-import { uploadToGCS, deleteFromGCS } from "../utils/gcs.js";
+import { uploadToGCS, deleteFromGCS, generateSignedUrl } from "../utils/gcs.js";
 
 const { Product, Category } = models;
 
-// ======================================================
-// CREATE PRODUCT
-// ======================================================
+/* ============================================================
+   CREATE PRODUCT
+   ============================================================ */
 export const createProduct = async (req, res) => {
   try {
     const {
@@ -43,23 +47,23 @@ export const createProduct = async (req, res) => {
       status,
     });
 
-    res.status(201).json(product);
+    return res.status(201).json(product);
   } catch (err) {
     console.error("CREATE PRODUCT ERROR:", err);
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 };
 
-// ======================================================
-// READ ALL (filters + pagination + descendants)
-// ======================================================
+/* ============================================================
+   READ ALL PRODUCTS (with filters + pagination + descendants)
+   ============================================================ */
 export const getAllProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 12;
     const offset = (page - 1) * limit;
-
     const { status, search, category_id } = req.query;
+
     const includeDesc = ["1", "true", "yes"].includes(
       String(req.query.descendants || "").toLowerCase()
     );
@@ -93,34 +97,74 @@ export const getAllProducts = async (req, res) => {
       include: [{ model: Category, attributes: ["id", "name", "slug", "parent_id"] }],
     });
 
-    res.json({
-      data: rows,
-      pagination: { total: count, page, limit, totalPages: Math.ceil(count / limit) },
+    const mode = process.env.STORAGE_MODE || "local";
+    let data = rows;
+
+    // ✅ Generate signed URL if using GCS
+    if (mode === "gcs") {
+      data = await Promise.all(
+        rows.map(async (p) => {
+          const obj = p.toJSON();
+          if (obj.image_path) {
+            try {
+              obj.image_url = await generateSignedUrl(obj.image_path);
+            } catch {
+              obj.image_url = null;
+            }
+          }
+          return obj;
+        })
+      );
+    }
+
+    return res.json({
+      data,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+      },
     });
   } catch (err) {
     console.error("GET /products error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-// ======================================================
-// READ ONE
-// ======================================================
+/* ============================================================
+   READ SINGLE PRODUCT
+   ============================================================ */
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id, {
       include: [{ model: Category, attributes: ["id", "name", "slug"] }],
     });
-    if (!product) return res.status(404).json({ error: "Product not found" });
-    res.json(product);
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const mode = process.env.STORAGE_MODE || "local";
+    const obj = product.toJSON();
+
+    if (mode === "gcs" && obj.image_path) {
+      try {
+        obj.image_url = await generateSignedUrl(obj.image_path);
+      } catch {
+        obj.image_url = null;
+      }
+    }
+
+    return res.json(obj);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-// ======================================================
-// BULK FETCH
-// ======================================================
+/* ============================================================
+   BULK FETCH PRODUCTS
+   ============================================================ */
 export const getProductsBulk = async (req, res) => {
   try {
     const ids = (req.body?.ids || []).map(Number).filter(Boolean);
@@ -132,16 +176,35 @@ export const getProductsBulk = async (req, res) => {
       order: [["id", "ASC"]],
     });
 
-    res.json({ data: rows });
+    const mode = process.env.STORAGE_MODE || "local";
+    let data = rows;
+
+    if (mode === "gcs") {
+      data = await Promise.all(
+        rows.map(async (p) => {
+          const obj = p.toJSON();
+          if (obj.image_path) {
+            try {
+              obj.image_url = await generateSignedUrl(obj.image_path);
+            } catch {
+              obj.image_url = null;
+            }
+          }
+          return obj;
+        })
+      );
+    }
+
+    return res.json({ data });
   } catch (err) {
     console.error("POST /products/bulk error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-// ======================================================
-// UPDATE PRODUCT (พร้อมลบรูปเก่าเมื่อมีรูปใหม่)
-// ======================================================
+/* ============================================================
+   UPDATE PRODUCT (delete old image if replaced)
+   ============================================================ */
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
@@ -151,10 +214,9 @@ export const updateProduct = async (req, res) => {
     const newImage = req.body.image_path;
     const mode = process.env.STORAGE_MODE || "local";
 
-    // อัปเดตข้อมูลสินค้า
     await product.update(req.body);
 
-    // ถ้ามีรูปใหม่ และไม่ตรงกับของเดิม → ลบรูปเก่า
+    // Delete old image if replaced
     if (oldImage && newImage && oldImage !== newImage) {
       if (mode === "gcs") {
         await deleteFromGCS(oldImage);
@@ -168,16 +230,16 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    res.json(product);
+    return res.json(product);
   } catch (err) {
     console.error("UPDATE PRODUCT ERROR:", err);
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 };
 
-// ======================================================
-// DELETE PRODUCT (ลบจาก local หรือ GCS)
-// ======================================================
+/* ============================================================
+   DELETE PRODUCT (remove from local or GCS)
+   ============================================================ */
 export const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
@@ -199,16 +261,16 @@ export const deleteProduct = async (req, res) => {
     }
 
     await product.destroy();
-    res.json({ message: "Product deleted successfully" });
+    return res.json({ message: "Product deleted successfully" });
   } catch (err) {
     console.error("DELETE /products error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-// ======================================================
-// TOGGLE STATUS
-// ======================================================
+/* ============================================================
+   TOGGLE PRODUCT STATUS
+   ============================================================ */
 export const toggleProductStatus = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
@@ -217,59 +279,65 @@ export const toggleProductStatus = async (req, res) => {
     product.status = product.status === "active" ? "inactive" : "active";
     await product.save();
 
-    res.json({
+    return res.json({
       message: "Product status updated",
       id: product.id,
       status: product.status,
     });
   } catch (err) {
     console.error("PATCH /products/:id/toggle error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-// ======================================================
-// UPLOAD IMAGE (รองรับ local + GCS, จำกัดขนาด 5MB, ลบ temp อัตโนมัติ)
-// ======================================================
+/* ============================================================
+   UPLOAD PRODUCT IMAGE (local + GCS)
+   ============================================================ */
 export const uploadProductImage = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
 
     const mime = req.file.mimetype?.toLowerCase() || "";
     const ext = path.extname(req.file.originalname).toLowerCase();
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+    // Validate type
     if (!allowed.includes(mime)) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: "Only image files are allowed (jpg, png, webp, gif)" });
+      return res.status(400).json({
+        error: "Only image files are allowed (jpg, png, webp, gif)",
+      });
     }
 
+    // Validate size
     if (req.file.size > 5 * 1024 * 1024) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: "Image too large (max 5MB allowed)" });
     }
 
-    const newFileName = generateUniqueFileName(req.file.originalname);
     const mode = process.env.STORAGE_MODE || "local";
     let fileUrl = "";
 
     if (mode === "gcs") {
-      // Upload to Google Cloud Storage
-      fileUrl = await uploadToGCS(req.file.path, newFileName);
+      fileUrl = await uploadToGCS(req.file.path, req.file.originalname);
     } else {
-      // Save to /public/uploads
       const uploadDir = path.join(process.cwd(), "apps/api/public/uploads");
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+      const newFileName = generateUniqueFileName(req.file.originalname);
       const destPath = path.join(uploadDir, newFileName);
       fs.renameSync(req.file.path, destPath);
+
       fileUrl = `/uploads/${newFileName}`;
     }
 
-    // ลบ temp หลัง upload
     if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
     return res.json({ url: fileUrl, storage: mode });
   } catch (err) {
     console.error("POST /products/upload error:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
