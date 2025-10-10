@@ -1,5 +1,7 @@
 import express from "express";
 import multer from "multer";
+import path from "path";
+import { ensureTmpDir } from "../utils/tmp.js";
 import {
   createProduct,
   getAllProducts,
@@ -13,7 +15,7 @@ import {
 import { maybeAuth } from "../middleware/maybeAuth.js";
 
 const router = express.Router();
-const upload = multer({ dest: "apps/api/tmp" });
+const upload = multer({ dest: ensureTmpDir() });
 
 // Public
 router.get("/", getAllProducts);

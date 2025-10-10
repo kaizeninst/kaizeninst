@@ -14,6 +14,7 @@ import orderRoutes from "./routes/orders.js";
 import quoteRoutes from "./routes/quotes.js";
 import staffRoutes from "./routes/staff.js";
 import emailRoutes from "./routes/email.js";
+import fileRoutes from "./routes/files.js";
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/quotes", quoteRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/email", emailRoutes);
+app.use("/api/files", fileRoutes);
 
 // 404 handler for API routes
 app.use((req, res, next) => {

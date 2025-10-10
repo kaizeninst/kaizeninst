@@ -1,26 +1,50 @@
 import { Storage } from "@google-cloud/storage";
-import path from "path";
+import fs from "fs";
+import { generateUniqueFileName } from "./fileName.js";
 
 const storage = new Storage({
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  projectId: process.env.GOOGLE_CLOUD_PROJECT,
 });
-
 const bucketName = process.env.GCS_BUCKET_NAME;
+const bucket = storage.bucket(bucketName);
 
 /**
- * Upload local file to Google Cloud Storage
- * @param {string} localPath - path to local file (e.g. tmp/1234.png)
- * @param {string} filename - desired destination filename
- * @returns {Promise<string>} public file URL
+ * Upload file to GCS
+ * Automatically generate unique filename using timestamp + random hash.
  */
-export async function uploadToGCS(localPath, filename) {
-  const bucket = storage.bucket(bucketName);
-  const destination = `products/${filename}`;
+export async function uploadToGCS(localPath, originalName) {
+  const safeFileName = generateUniqueFileName(originalName);
+  const destination = `uploads/${safeFileName}`;
 
-  await bucket.upload(localPath, {
-    destination,
-    metadata: { cacheControl: "public, max-age=31536000" },
+  await bucket.upload(localPath, { destination });
+
+  if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+
+  console.log("Uploaded to GCS:", destination);
+  return destination;
+}
+
+/**
+ * Generate Signed URL (temporary public link)
+ * ใช้สำหรับโหลดไฟล์แบบ private
+ */
+export async function generateSignedUrl(filePath) {
+  const [url] = await bucket.file(filePath).getSignedUrl({
+    version: "v4",
+    action: "read",
+    expires: Date.now() + 10 * 60 * 1000, // 10 minutes
   });
+  return url;
+}
 
-  return `https://storage.googleapis.com/${bucketName}/${destination}`;
+/**
+ * Delete file from GCS (safe)
+ */
+export async function deleteFromGCS(filePath) {
+  try {
+    await bucket.file(filePath).delete({ ignoreNotFound: true });
+    console.log(`Deleted from GCS: ${filePath}`);
+  } catch (err) {
+    console.error("Delete GCS file error:", err.message);
+  }
 }

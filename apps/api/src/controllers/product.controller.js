@@ -4,6 +4,7 @@ import models from "../models/index.js";
 import { Op } from "sequelize";
 import { getSelfAndDescendantIds } from "../utils/categoryTree.js";
 import { generateUniqueFileName } from "../utils/fileName.js";
+import { uploadToGCS, deleteFromGCS } from "../utils/gcs.js";
 
 const { Product, Category } = models;
 
@@ -142,24 +143,33 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// ✅ DELETE PRODUCT
+// ✅ DELETE PRODUCT (ลบจาก local หรือ GCS)
 export const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found" });
 
-    // ลบไฟล์ภาพออกจาก public/uploads ด้วย (dev mode)
+    const mode = process.env.STORAGE_MODE || "local";
+
     if (product.image_path) {
-      const localPath = path.join(process.cwd(), "public", product.image_path);
-      if (fs.existsSync(localPath)) {
-        fs.unlinkSync(localPath);
-        console.log("🗑️ Removed:", localPath);
+      if (mode === "gcs") {
+        // ลบจาก Google Cloud Storage
+        await deleteFromGCS(product.image_path);
+        console.log("🗑️ Removed from GCS:", product.image_path);
+      } else {
+        // ลบจาก local (dev mode)
+        const localPath = path.join(process.cwd(), "apps/api/public", product.image_path);
+        if (fs.existsSync(localPath)) {
+          fs.unlinkSync(localPath);
+          console.log("🗑️ Removed local:", localPath);
+        }
       }
     }
 
     await product.destroy();
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
+    console.error("DELETE /products error:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -184,21 +194,32 @@ export const toggleProductStatus = async (req, res) => {
   }
 };
 
-// ✅ UPLOAD IMAGE (for dev mode - local)
+// ✅ UPLOAD IMAGE (supports local + GCS, only image, max 5MB)
 export const uploadProductImage = async (req, res) => {
   try {
-    console.log("REQ.FILE =", req.file);
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const mode = process.env.STORAGE_MODE || "local";
-    const newFileName = generateUniqueFileName(req.file.originalname);
+    const mime = req.file.mimetype?.toLowerCase() || "";
+    const ext = path.extname(req.file.originalname).toLowerCase();
 
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(mime)) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: "Only image files are allowed (jpg, png, webp, gif)" });
+    }
+    if (req.file.size > 5 * 1024 * 1024) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ error: "Image too large (max 5MB allowed)" });
+    }
+
+    const newFileName = generateUniqueFileName(req.file.originalname);
     let fileUrl = "";
 
     if (mode === "gcs") {
       // Upload to Google Cloud Storage
       fileUrl = await uploadToGCS(req.file.path, newFileName);
-      fs.unlinkSync(req.file.path); // remove temp file
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); // remove temp file
     } else {
       // Local mode: save to /public/uploads
       const uploadDir = path.join(process.cwd(), "apps/api/public/uploads");
@@ -206,7 +227,6 @@ export const uploadProductImage = async (req, res) => {
 
       const destPath = path.join(uploadDir, newFileName);
       fs.renameSync(req.file.path, destPath);
-
       fileUrl = `/uploads/${newFileName}`;
     }
 
