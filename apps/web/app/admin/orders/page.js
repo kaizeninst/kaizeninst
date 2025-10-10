@@ -3,150 +3,19 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  FileText,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Truck,
-  Eye,
-  Plus,
-  Search,
-  CreditCard,
-  Package,
-} from "lucide-react";
+import { FileText, CheckCircle, Clock, Truck, Package, Plus, Search } from "lucide-react";
 import Breadcrumb from "@/components/common/Breadcrumb";
 import Pagination from "@/components/common/Pagination";
+import SummaryCard from "@/components/orders/SummaryCard";
+import TableSkeleton from "@/components/orders/TableSkeleton";
+import OrderRow from "@/components/orders/OrderRow";
 
-/* ---------------------- Summary Card ---------------------- */
-function SummaryCard({ icon: Icon, label, value, color }) {
-  return (
-    <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm transition hover:shadow-md">
-      <div className={`flex h-10 w-10 items-center justify-center rounded-md ${color}`}>
-        <Icon className="h-5 w-5 text-white" />
-      </div>
-      <div>
-        <p className="text-sm text-gray-600">{label}</p>
-        <p className="text-lg font-semibold">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------------- Status Dropdown ---------------------- */
-function StatusDropdown({ value, onChange }) {
-  const statuses = ["pending", "processing", "shipped", "delivered"];
-  const colors = {
-    pending: "text-yellow-600",
-    processing: "text-gray-700",
-    shipped: "text-blue-700",
-    delivered: "text-green-700",
-  };
-  return (
-    <select
-      value={value || "pending"}
-      onChange={(e) => onChange(e.target.value)}
-      className={`rounded-md border border-gray-300 px-2 py-1 text-xs font-medium focus:ring focus:ring-red-100 ${colors[value]}`}
-    >
-      {statuses.map((s) => (
-        <option key={s} value={s}>
-          {s.charAt(0).toUpperCase() + s.slice(1)}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-/* ---------------------- Payment Dropdown ---------------------- */
-function PaymentDropdown({ value, onChange }) {
-  const statuses = ["unpaid", "paid"];
-  const colors = {
-    unpaid: "text-red-600",
-    paid: "text-green-700",
-  };
-  return (
-    <select
-      value={value || "unpaid"}
-      onChange={(e) => onChange(e.target.value)}
-      className={`rounded-md border border-gray-300 px-2 py-1 text-xs font-medium focus:ring focus:ring-red-100 ${colors[value]}`}
-    >
-      {statuses.map((s) => (
-        <option key={s} value={s}>
-          {s.charAt(0).toUpperCase() + s.slice(1)}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-/* ---------------------- Table Skeleton ---------------------- */
-function TableSkeleton() {
-  return (
-    <div className="table-container w-full animate-pulse">
-      <table className="table">
-        <thead>
-          <tr>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <th key={i}>
-                <div className="h-4 w-16 rounded bg-gray-200"></div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <tr key={i}>
-              {Array.from({ length: 8 }).map((_, j) => (
-                <td key={j}>
-                  <div className="h-5 w-full rounded bg-gray-100"></div>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* ---------------------- Row ---------------------- */
-function OrderRow({ o, router, onStatusChange, onPaymentChange }) {
-  return (
-    <tr className="border-t transition hover:bg-gray-50">
-      <td className="font-medium">OD-{String(o.id).padStart(4, "0")}</td>
-      <td>
-        <div className="font-medium">{o.customer_name}</div>
-        <div className="text-xs text-gray-500">{o.customer_email}</div>
-      </td>
-      <td className="text-right font-semibold text-red-600">
-        THB{" "}
-        {Number(o.total || 0).toLocaleString("th-TH", {
-          minimumFractionDigits: 2,
-        })}
-      </td>
-      <td>
-        <PaymentDropdown value={o.payment_status} onChange={(v) => onPaymentChange(o.id, v)} />
-      </td>
-      <td>
-        <StatusDropdown value={o.order_status} onChange={(v) => onStatusChange(o.id, v)} />
-      </td>
-      <td className="text-gray-600">{new Date(o.created_at).toLocaleDateString()}</td>
-      <td className="table-actions text-center">
-        <button
-          onClick={() => router.push(`/admin/orders/${o.id}`)}
-          className="rounded bg-gray-100 p-2 hover:bg-gray-200"
-          title="View"
-        >
-          <Eye className="h-4 w-4 text-gray-700" />
-        </button>
-      </td>
-    </tr>
-  );
-}
-
-/* ---------------------- Main Page ---------------------- */
+/* ============================================================
+   ORDERS MANAGEMENT PAGE
+   ============================================================ */
 export default function OrdersPage() {
   const router = useRouter();
+
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -158,7 +27,7 @@ export default function OrdersPage() {
   });
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [stats, setStats] = useState({
     total: 0,
@@ -168,67 +37,83 @@ export default function OrdersPage() {
     delivered: 0,
   });
 
+  /* ------------------------------------------------------------
+     Debounce Search
+     ------------------------------------------------------------ */
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  const fetchOrders = async (p = page, s = debouncedSearch, f = filter, pay = paymentFilter) => {
+  /* ------------------------------------------------------------
+     Fetch Orders
+     ------------------------------------------------------------ */
+  async function fetchOrders(p = page, s = debouncedSearch, f = statusFilter, pay = paymentFilter) {
     setLoading(true);
     try {
-      const res = await fetch(
+      const response = await fetch(
         `/api/orders?page=${p}&limit=10${
           f !== "all" ? `&status=${f}` : ""
         }${pay !== "all" ? `&payment=${pay}` : ""}&search=${encodeURIComponent(s)}`,
         { credentials: "include" }
       );
-      const data = await res.json();
+
+      const data = await response.json();
       const list = data?.data || [];
+
       setOrders(list);
       setPagination(data?.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 });
       setPage(data?.pagination?.page || p);
 
-      const stats = {
+      // Compute stats for summary cards
+      const summary = {
         total: list.length,
         pending: list.filter((x) => x.order_status === "pending").length,
         processing: list.filter((x) => x.order_status === "processing").length,
         shipped: list.filter((x) => x.order_status === "shipped").length,
         delivered: list.filter((x) => x.order_status === "delivered").length,
       };
-      setStats(stats);
-    } catch (err) {
-      console.error("Error fetching orders:", err);
+      setStats(summary);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
-    fetchOrders(1, debouncedSearch, filter, paymentFilter);
-  }, [debouncedSearch, filter, paymentFilter]);
+    fetchOrders(1, debouncedSearch, statusFilter, paymentFilter);
+  }, [debouncedSearch, statusFilter, paymentFilter]);
 
-  // 🔄 Update status
-  const handleStatusChange = async (id, newStatus) => {
+  /* ------------------------------------------------------------
+     Update Order Status
+     ------------------------------------------------------------ */
+  async function handleStatusChange(id, newStatus) {
     await fetch(`/api/orders/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ order_status: newStatus }),
     });
-    fetchOrders(page, debouncedSearch, filter);
-  };
+    fetchOrders(page, debouncedSearch, statusFilter);
+  }
 
-  // 💰 Update payment
-  const handlePaymentChange = async (id, newStatus) => {
+  /* ------------------------------------------------------------
+     Update Payment Status
+     ------------------------------------------------------------ */
+  async function handlePaymentChange(id, newStatus) {
     await fetch(`/api/orders/${id}/payment`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ payment_status: newStatus }),
     });
-    fetchOrders(page, debouncedSearch, filter);
-  };
+    fetchOrders(page, debouncedSearch, statusFilter);
+  }
 
+  /* ------------------------------------------------------------
+     Render
+     ------------------------------------------------------------ */
   return (
     <div className="w-full p-4 sm:p-6">
       <Breadcrumb items={[{ label: "Dashboard", href: "/admin/dashboard" }, { label: "Orders" }]} />
@@ -263,8 +148,8 @@ export default function OrdersPage() {
           </select>
 
           <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
             className="focus:border-primary rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:ring focus:ring-red-100"
           >
             <option value="all">All Status</option>
@@ -302,7 +187,7 @@ export default function OrdersPage() {
         />
       </div>
 
-      {/* Table */}
+      {/* Orders Table */}
       {loading ? (
         <TableSkeleton />
       ) : orders.length === 0 ? (
@@ -323,10 +208,10 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o) => (
+                {orders.map((order) => (
                   <OrderRow
-                    key={o.id}
-                    o={o}
+                    key={order.id}
+                    order={order}
                     router={router}
                     onStatusChange={handleStatusChange}
                     onPaymentChange={handlePaymentChange}
@@ -339,7 +224,7 @@ export default function OrdersPage() {
           <Pagination
             pagination={pagination}
             page={page}
-            onPageChange={(newPage) => fetchOrders(newPage, debouncedSearch, filter)}
+            onPageChange={(newPage) => fetchOrders(newPage, debouncedSearch, statusFilter)}
           />
         </>
       )}
