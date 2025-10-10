@@ -1,24 +1,27 @@
+// ============================================================
+//  CATEGORY CONTROLLER
+// ============================================================
+
 import models from "../models/index.js";
 import { Op } from "sequelize";
+
 const { Category, Product } = models;
 
-// ✅ CREATE
+/* ============================================================
+   CREATE CATEGORY (POST /api/categories)
+   ============================================================ */
 export const createCategory = async (req, res) => {
   try {
     let { name, slug, parent_id = null } = req.body;
 
-    // ถ้า parent_id ส่งมาเป็น string ว่าง ให้แปลงเป็น null
+    // Normalize parent_id
     if (parent_id === "" || parent_id === "null") parent_id = null;
 
-    // ✅ หา sort_order สูงสุดของ parent เดียวกัน
-    const maxOrder = await Category.max("sort_order", {
-      where: { parent_id },
-    });
-
-    // ✅ ถ้ายังไม่มี category ใน parent นี้ ให้เริ่มจาก 1
+    // Find max sort_order within the same parent
+    const maxOrder = await Category.max("sort_order", { where: { parent_id } });
     const nextOrder = isNaN(maxOrder) ? 1 : maxOrder + 1;
 
-    // ✅ สร้าง category ใหม่ โดยไม่ให้ user ระบุ sort_order เอง
+    // Create new category
     const category = await Category.create({
       name,
       slug,
@@ -27,17 +30,20 @@ export const createCategory = async (req, res) => {
       status: req.body.status || "active",
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Category created successfully",
       data: category,
     });
-  } catch (err) {
-    console.error("POST /categories error:", err);
-    res.status(400).json({ error: err.message });
+  } catch (error) {
+    console.error("POST /categories error:", error);
+    return res.status(400).json({ error: error.message });
   }
 };
 
-// ✅ READ ALL (with parent + children + products count)
+/* ============================================================
+   GET ALL CATEGORIES (GET /api/categories)
+   Support pagination, filtering, search, and nested children
+   ============================================================ */
 export const getAllCategories = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -47,9 +53,8 @@ export const getAllCategories = async (req, res) => {
 
     const where = {};
 
-    // ✅ logic parent_id
+    // Parent logic
     if (parent_id === undefined || parent_id === "" || parent_id === "null") {
-      // ไม่ส่ง / ส่งว่าง / ส่ง "null" → top-level
       where.parent_id = null;
     } else {
       const parsed = parseInt(parent_id, 10);
@@ -60,6 +65,7 @@ export const getAllCategories = async (req, res) => {
     }
 
     if (status) where.status = status;
+
     if (search) {
       where[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
@@ -117,7 +123,7 @@ export const getAllCategories = async (req, res) => {
       })),
     }));
 
-    res.json({
+    return res.json({
       data,
       pagination: {
         total: count,
@@ -126,13 +132,16 @@ export const getAllCategories = async (req, res) => {
         totalPages: Math.ceil(count / limit),
       },
     });
-  } catch (err) {
-    console.error("GET /categories error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("GET /categories error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ READ ONE
+/* ============================================================
+   GET CATEGORY BY ID (GET /api/categories/:id)
+   Include children and product count
+   ============================================================ */
 export const getCategoryById = async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id, {
@@ -158,7 +167,7 @@ export const getCategoryById = async (req, res) => {
 
     if (!category) return res.status(404).json({ error: "Category not found" });
 
-    res.json({
+    return res.json({
       id: category.id,
       name: category.name,
       slug: category.slug,
@@ -180,13 +189,16 @@ export const getCategoryById = async (req, res) => {
         productsCount: child.Products?.length || 0,
       })),
     });
-  } catch (err) {
-    console.error("GET /categories/:id error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("GET /categories/:id error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ READ PARENT CATEGORIES (with children + product count)
+/* ============================================================
+   GET PARENT CATEGORIES (GET /api/categories/parents)
+   Only top-level categories with children and product count
+   ============================================================ */
 export const getParentCategories = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -203,10 +215,8 @@ export const getParentCategories = async (req, res) => {
       ];
     }
 
-    // ✅ นับเฉพาะ parent category จริง ๆ
     const totalParents = await Category.count({ where });
 
-    // ✅ ดึงข้อมูลเฉพาะหน้านี้
     const rows = await Category.findAll({
       where,
       limit,
@@ -257,22 +267,25 @@ export const getParentCategories = async (req, res) => {
       })),
     }));
 
-    res.json({
+    return res.json({
       data,
       pagination: {
-        total: totalParents, // ✅ นับ parent จริง
+        total: totalParents,
         page,
         limit,
         totalPages: Math.ceil(totalParents / limit),
       },
     });
-  } catch (err) {
-    console.error("GET /categories/parents error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("GET /categories/parents error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ UPDATE
+/* ============================================================
+   UPDATE CATEGORY (PUT /api/categories/:id)
+   Validate parent_id and sort_order
+   ============================================================ */
 export const updateCategory = async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
@@ -280,7 +293,7 @@ export const updateCategory = async (req, res) => {
 
     let { parent_id = category.parent_id, sort_order = category.sort_order } = req.body;
 
-    // ✅ แปลง parent_id ให้ถูกต้อง
+    // Normalize parent_id
     if (parent_id === "" || parent_id === "null") {
       parent_id = null;
     } else if (parent_id !== null) {
@@ -291,14 +304,13 @@ export const updateCategory = async (req, res) => {
       parent_id = parsed;
     }
 
-    // ✅ แปลง sort_order ให้เป็นตัวเลขเสมอ
+    // Validate sort_order
     if (sort_order !== undefined) {
       sort_order = parseInt(sort_order, 10);
       if (isNaN(sort_order)) {
         return res.status(400).json({ error: "sort_order must be a number" });
       }
 
-      // ✅ กัน sort_order ซ้ำ (ยกเว้นอันเดิมของตัวเอง)
       const exists = await Category.findOne({
         where: {
           parent_id,
@@ -306,6 +318,7 @@ export const updateCategory = async (req, res) => {
           id: { [Op.ne]: category.id },
         },
       });
+
       if (exists) {
         return res.status(400).json({
           error: `Sort order ${sort_order} already exists in this parent category`,
@@ -313,61 +326,62 @@ export const updateCategory = async (req, res) => {
       }
     }
 
-    await category.update({
-      ...req.body,
-      parent_id,
-      sort_order,
-    });
-
-    res.json(category);
-  } catch (err) {
-    console.error("PUT /categories/:id error:", err);
-    res.status(400).json({ error: err.message });
+    await category.update({ ...req.body, parent_id, sort_order });
+    return res.json(category);
+  } catch (error) {
+    console.error("PUT /categories/:id error:", error);
+    return res.status(400).json({ error: error.message });
   }
 };
 
-// ✅ DELETE
+/* ============================================================
+   DELETE CATEGORY (DELETE /api/categories/:id)
+   ============================================================ */
 export const deleteCategory = async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
 
     await category.destroy();
-    res.json({ message: "Category deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.json({ message: "Category deleted successfully" });
+  } catch (error) {
+    console.error("DELETE /categories/:id error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ TOGGLE STATUS
+/* ============================================================
+   TOGGLE CATEGORY STATUS (PATCH /api/categories/:id/toggle)
+   ============================================================ */
 export const toggleCategoryStatus = async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
 
-    // toggle active/inactive
     category.status = category.status === "active" ? "inactive" : "active";
     await category.save();
 
-    res.json({
+    return res.json({
       message: "Category status updated",
       id: category.id,
       status: category.status,
     });
-  } catch (err) {
-    console.error("PATCH /categories/:id/toggle error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("PATCH /categories/:id/toggle error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// ✅ MOVE UP / DOWN
+/* ============================================================
+   MOVE CATEGORY (PATCH /api/categories/:id/move)
+   Swap sort_order with adjacent category in given direction
+   ============================================================ */
 export const moveCategory = async (req, res) => {
   try {
-    const { direction } = req.body; // "up" หรือ "down"
+    const { direction } = req.body; // "up" or "down"
     const category = await Category.findByPk(req.params.id);
     if (!category) return res.status(404).json({ error: "Category not found" });
 
-    // หา category ที่ต้องสลับตำแหน่ง
     const operator = direction === "up" ? Op.lt : Op.gt;
     const order = direction === "up" ? [["sort_order", "DESC"]] : [["sort_order", "ASC"]];
 
@@ -383,7 +397,6 @@ export const moveCategory = async (req, res) => {
       return res.json({ message: "Already at the edge" });
     }
 
-    // สลับค่า sort_order
     const temp = category.sort_order;
     category.sort_order = swapWith.sort_order;
     swapWith.sort_order = temp;
@@ -391,9 +404,9 @@ export const moveCategory = async (req, res) => {
     await category.save();
     await swapWith.save();
 
-    res.json({ message: "Category moved", category, swapWith });
-  } catch (err) {
-    console.error("PATCH /categories/:id/move error:", err);
-    res.status(500).json({ error: err.message });
+    return res.json({ message: "Category moved", category, swapWith });
+  } catch (error) {
+    console.error("PATCH /categories/:id/move error:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
