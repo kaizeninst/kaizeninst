@@ -14,26 +14,28 @@ import {
 import Breadcrumb from "@/components/common/Breadcrumb";
 import Pagination from "@/components/common/Pagination";
 
-/* ---------------------- Skeleton Loader ---------------------- */
+/* ============================================================
+   TABLE SKELETON (LOADING PLACEHOLDER)
+   ============================================================ */
 function TableSkeleton() {
   return (
     <div className="table-container w-full animate-pulse">
       <table className="table">
         <thead>
           <tr>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <th key={i}>
-                <div className="h-4 w-16 rounded bg-gray-200"></div>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <th key={index}>
+                <div className="h-4 w-16 rounded bg-gray-200" />
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: 10 }).map((_, i) => (
-            <tr key={i}>
-              {Array.from({ length: 6 }).map((_, j) => (
-                <td key={j}>
-                  <div className="h-5 w-full rounded bg-gray-100"></div>
+          {Array.from({ length: 10 }).map((_, rowIndex) => (
+            <tr key={rowIndex}>
+              {Array.from({ length: 6 }).map((_, colIndex) => (
+                <td key={colIndex}>
+                  <div className="h-5 w-full rounded bg-gray-100" />
                 </td>
               ))}
             </tr>
@@ -44,19 +46,23 @@ function TableSkeleton() {
   );
 }
 
-/* ---------------------- Status Toggle ---------------------- */
+/* ============================================================
+   STATUS TOGGLE COMPONENT
+   ============================================================ */
 function StatusToggle({ category, onStatusChange }) {
   const handleToggle = async () => {
     try {
-      const res = await fetch(`/api/categories/${category.id}/toggle`, { method: "PATCH" });
-      const data = await res.json();
-      if (res.ok) onStatusChange?.(data.status);
+      const response = await fetch(`/api/categories/${category.id}/toggle`, { method: "PATCH" });
+      const data = await response.json();
+      if (response.ok) onStatusChange?.(data.status);
       else alert(data.error || "Failed to update");
-    } catch (err) {
-      console.error("Toggle status error:", err);
+    } catch (error) {
+      console.error("Toggle status error:", error);
     }
   };
+
   const isActive = category.status === "active";
+
   return (
     <div className="flex items-center gap-2">
       <button
@@ -82,7 +88,9 @@ function StatusToggle({ category, onStatusChange }) {
   );
 }
 
-/* ---------------------- Category Row ---------------------- */
+/* ============================================================
+   CATEGORY TABLE ROW (RECURSIVE)
+   ============================================================ */
 function CategoryRow({
   category,
   depth = 0,
@@ -99,6 +107,7 @@ function CategoryRow({
   return (
     <>
       <tr className={depth === 0 ? "border-t bg-gray-50" : "border-t"}>
+        {/* Name with Expand/Collapse */}
         <td className="px-4 py-2">
           <div className="flex items-center gap-2" style={{ paddingLeft: depth * 20 }}>
             {hasChildren && (
@@ -117,8 +126,10 @@ function CategoryRow({
           </div>
         </td>
 
+        {/* Slug */}
         <td className="px-4 py-2 text-gray-600">{category.slug}</td>
 
+        {/* Sort Order with Move Buttons */}
         <td className="px-4 py-2">
           <div className="flex items-center gap-2">
             <button
@@ -128,7 +139,9 @@ function CategoryRow({
             >
               <ArrowUp className="h-4 w-4 text-gray-500" />
             </button>
+
             <span className="font-medium">{category.sort_order ?? "-"}</span>
+
             <button
               onClick={() => onMove?.(category.id, "down")}
               className="rounded p-1 hover:bg-gray-100"
@@ -139,6 +152,7 @@ function CategoryRow({
           </div>
         </td>
 
+        {/* Status */}
         <td className="px-4 py-2">
           <StatusToggle
             category={category}
@@ -146,8 +160,10 @@ function CategoryRow({
           />
         </td>
 
+        {/* Product Count */}
         <td className="px-4 py-2 text-center">{productCount}</td>
 
+        {/* Actions */}
         <td className="flex gap-2 px-4 py-2">
           <button
             onClick={() => onEdit?.(category)}
@@ -164,6 +180,7 @@ function CategoryRow({
         </td>
       </tr>
 
+      {/* Render Child Categories */}
       {hasChildren &&
         expanded[category.id] &&
         category.children.map((child) => (
@@ -183,28 +200,32 @@ function CategoryRow({
   );
 }
 
-/* ---------------------- Category Modal ---------------------- */
+/* ============================================================
+   CATEGORY MODAL (CREATE / EDIT)
+   ============================================================ */
 function CategoryModal({ isOpen, onClose, mode, category, onSuccess }) {
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     name: "",
     slug: "",
     parent_id: null,
+    sort_order: 0,
     status: "active",
   });
-  const [parents, setParents] = useState([]);
+
+  const [parentCategories, setParentCategories] = useState([]);
 
   useEffect(() => {
     if (isOpen) {
       fetch("/api/categories?limit=100")
         .then((res) => res.json())
-        .then((data) => setParents(data?.data || []))
-        .catch((err) => console.error("Error fetching parents:", err));
+        .then((data) => setParentCategories(data?.data || []))
+        .catch((err) => console.error("Error fetching parent categories:", err));
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (mode === "edit" && category) {
-      setForm({
+      setFormData({
         name: category.name || "",
         slug: category.slug || "",
         parent_id: category.parent_id ?? null,
@@ -212,7 +233,7 @@ function CategoryModal({ isOpen, onClose, mode, category, onSuccess }) {
         status: category.status || "active",
       });
     } else if (mode === "create") {
-      setForm({
+      setFormData({
         name: "",
         slug: "",
         parent_id: null,
@@ -224,9 +245,9 @@ function CategoryModal({ isOpen, onClose, mode, category, onSuccess }) {
 
   if (!isOpen) return null;
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({
+  function handleChange(event) {
+    const { name, value } = event.target;
+    setFormData((prev) => ({
       ...prev,
       [name]:
         name === "parent_id"
@@ -237,23 +258,27 @@ function CategoryModal({ isOpen, onClose, mode, category, onSuccess }) {
             ? Number(value)
             : value,
     }));
-  };
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
     const url = mode === "create" ? "/api/categories" : `/api/categories/${category.id}`;
     const method = mode === "create" ? "POST" : "PUT";
-    const res = await fetch(url, {
+
+    const response = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(formData),
     });
-    const data = await res.json();
-    if (res.ok) {
+
+    const data = await response.json();
+    if (response.ok) {
       onSuccess();
       onClose();
-    } else alert(data.error || "Failed to save");
-  };
+    } else {
+      alert(data.error || "Failed to save category");
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -263,47 +288,51 @@ function CategoryModal({ isOpen, onClose, mode, category, onSuccess }) {
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name */}
           <div>
             <label className="block text-sm font-medium">Name</label>
             <input
               type="text"
               name="name"
-              value={form.name}
+              value={formData.name}
               onChange={handleChange}
               required
               className="w-full rounded border px-3 py-2"
             />
           </div>
 
+          {/* Slug */}
           <div>
             <label className="block text-sm font-medium">Slug</label>
             <input
               type="text"
               name="slug"
-              value={form.slug}
+              value={formData.slug}
               onChange={handleChange}
               required
               className="w-full rounded border px-3 py-2"
             />
           </div>
 
+          {/* Parent Category */}
           <div>
             <label className="block text-sm font-medium">Parent Category</label>
             <select
               name="parent_id"
-              value={form.parent_id ?? ""}
+              value={formData.parent_id ?? ""}
               onChange={handleChange}
               className="w-full rounded border px-3 py-2"
             >
               <option value="">— None (Top-level) —</option>
-              {parents.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
+              {parentCategories.map((parent) => (
+                <option key={parent.id} value={parent.id}>
+                  {parent.name}
                 </option>
               ))}
             </select>
           </div>
 
+          {/* Buttons */}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded border px-4 py-2">
               Cancel
@@ -321,7 +350,9 @@ function CategoryModal({ isOpen, onClose, mode, category, onSuccess }) {
   );
 }
 
-/* ---------------------- Main Page ---------------------- */
+/* ============================================================
+   MAIN PAGE: CATEGORY MANAGEMENT
+   ============================================================ */
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
   const [expanded, setExpanded] = useState({});
@@ -335,52 +366,59 @@ export default function CategoriesPage() {
   const [modalMode, setModalMode] = useState("create");
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  // debounce search
+  /* ------------------------------------------------------------
+     Debounce Search
+     ------------------------------------------------------------ */
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // fetch data
-  const fetchCategories = async (newPage = 1, s = debouncedSearch) => {
+  /* ------------------------------------------------------------
+     Fetch Categories from API
+     ------------------------------------------------------------ */
+  async function fetchCategories(newPage = 1, s = debouncedSearch) {
     setLoading(true);
     try {
-      const res = await fetch(
+      const response = await fetch(
         `/api/categories/parents?page=${newPage}&limit=${limit}&search=${encodeURIComponent(s)}`
       );
-      const data = await res.json();
+      const data = await response.json();
       setCategories(data?.data || []);
       setPagination(data?.pagination || { total: 0, page: 1, limit, totalPages: 1 });
       setPage(data?.pagination?.page || newPage);
-    } catch (err) {
-      console.error("Error fetching categories:", err);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
     fetchCategories(1, debouncedSearch);
   }, [debouncedSearch]);
 
-  const handleMove = async (id, direction) => {
-    const res = await fetch(`/api/categories/${id}/move`, {
+  /* ------------------------------------------------------------
+     Handlers: Move, Delete, Status Update
+     ------------------------------------------------------------ */
+  async function handleMove(id, direction) {
+    const response = await fetch(`/api/categories/${id}/move`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ direction }),
     });
-    if (res.ok) fetchCategories(page, debouncedSearch);
-  };
+    if (response.ok) fetchCategories(page, debouncedSearch);
+  }
 
-  const handleDelete = async (id) => {
+  async function handleDelete(id) {
     if (!confirm("Are you sure you want to delete this category?")) return;
-    const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
-    if (res.ok) fetchCategories(page, debouncedSearch);
-  };
+    const response = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+    if (response.ok) fetchCategories(page, debouncedSearch);
+  }
 
-  const handleStatusUpdate = (id, newStatus) => {
-    setCategories((prev) =>
-      prev.map((cat) =>
+  function handleStatusUpdate(id, newStatus) {
+    setCategories((previous) =>
+      previous.map((cat) =>
         cat.id === id
           ? { ...cat, status: newStatus }
           : {
@@ -391,18 +429,24 @@ export default function CategoriesPage() {
             }
       )
     );
-  };
+  }
 
+  /* ------------------------------------------------------------
+     Render
+     ------------------------------------------------------------ */
   return (
     <div className="w-full p-4 sm:p-6">
       <Breadcrumb
         items={[{ label: "Dashboard", href: "/admin/dashboard" }, { label: "Categories" }]}
       />
+
+      {/* Header Section */}
       <div className="admin-header mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-foreground text-2xl font-semibold">Categories Management</h1>
           <p className="text-secondary text-sm">Organize and manage product categories</p>
         </div>
+
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -414,6 +458,7 @@ export default function CategoriesPage() {
               className="focus:border-primary w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm shadow-sm focus:ring focus:ring-red-200 sm:w-64"
             />
           </div>
+
           <button
             onClick={() => {
               setModalMode("create");
@@ -427,6 +472,7 @@ export default function CategoriesPage() {
         </div>
       </div>
 
+      {/* Table Section */}
       {loading ? (
         <TableSkeleton />
       ) : categories.length === 0 ? (
@@ -451,12 +497,12 @@ export default function CategoriesPage() {
                     key={cat.id}
                     category={cat}
                     expanded={expanded}
-                    toggleExpand={(id) => setExpanded((p) => ({ ...p, [id]: !p[id] }))}
+                    toggleExpand={(id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))}
                     onStatusUpdate={handleStatusUpdate}
                     onMove={handleMove}
-                    onEdit={(c) => {
+                    onEdit={(category) => {
                       setModalMode("edit");
-                      setSelectedCategory(c);
+                      setSelectedCategory(category);
                       setModalOpen(true);
                     }}
                     onDelete={handleDelete}
@@ -465,6 +511,7 @@ export default function CategoriesPage() {
               </tbody>
             </table>
           </div>
+
           <Pagination
             pagination={pagination}
             page={pagination.page}
@@ -475,6 +522,8 @@ export default function CategoriesPage() {
           />
         </>
       )}
+
+      {/* Modal */}
       <CategoryModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
