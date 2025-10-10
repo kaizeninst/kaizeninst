@@ -23,21 +23,6 @@ export default function SuccessPage() {
             Thank you for your interest. We'll review your requirements and get back to you soon.
           </p>
 
-          {/* Reference card */}
-          <div className="rounded-lg bg-white pt-4 shadow-md">
-            <div className="text-center font-semibold">
-              <h1 className="text-2xl">Reference Number</h1>
-            </div>
-            <div className="px-6 py-4 text-center">
-              <div className="inline-block w-full border bg-[#F9FAFC] px-4 py-2 text-2xl font-bold">
-                <h1 className="text-[#FF0000]">QR-123AGV25</h1>
-              </div>
-              <p className="mt-2 text-sm text-gray-500">
-                Please save this reference number for your records.
-              </p>
-            </div>
-          </div>
-
           {/* Steps card */}
           <div className="rounded-lg bg-white pt-4 shadow-md">
             <div className="text-center text-2xl font-semibold">
@@ -82,7 +67,7 @@ export default function SuccessPage() {
             <div className="flex flex-col items-center justify-around gap-6 sm:flex-row sm:gap-4">
               <div className="flex items-center space-x-2 text-blue-700">
                 <Phone className="h-6 w-6" />
-                <span>+66 12-123-1234</span>
+                <span>+66 89-188-2788</span>
               </div>
               <div className="flex items-center space-x-2 text-blue-700">
                 <Mail className="h-6 w-6" />
