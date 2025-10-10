@@ -12,50 +12,76 @@ import {
   formatTHB,
 } from "@/utils/cart";
 
+/* ============================================================
+   CART PAGE COMPONENT
+   ============================================================ */
 export default function CartPage() {
-  const [items, setItems] = useState([]); // [{ id, name, price, image, quantity }]
+  /* ------------------------------------------------------------
+     State Management
+     ------------------------------------------------------------ */
+  const [cartItems, setCartItems] = useState([]); // [{ id, name, price, image, quantity }]
 
-  // Load cart with latest prices from API + sync on changes
+  /* ------------------------------------------------------------
+     Load Cart Data from Local Storage or API
+     ------------------------------------------------------------ */
   useEffect(() => {
-    async function load() {
-      const detailed = await getCartDetailed();
-      setItems(detailed);
+    async function loadCartData() {
+      const detailedCartItems = await getCartDetailed();
+      setCartItems(detailedCartItems);
     }
-    load();
 
-    const onChange = () => load();
-    window.addEventListener("cart:change", onChange);
-    window.addEventListener("storage", onChange);
+    loadCartData();
+
+    const handleCartChange = () => loadCartData();
+    window.addEventListener("cart:change", handleCartChange);
+    window.addEventListener("storage", handleCartChange);
+
     return () => {
-      window.removeEventListener("cart:change", onChange);
-      window.removeEventListener("storage", onChange);
+      window.removeEventListener("cart:change", handleCartChange);
+      window.removeEventListener("storage", handleCartChange);
     };
   }, []);
 
-  // Update quantity (avoid cross-component setState error by deferring side-effects)
-  const handleQty = (id, delta) => {
-    setItems((prev) => {
-      const next = prev.map((it) =>
-        it.id === id ? { ...it, quantity: Math.max(1, (it.quantity || 1) + delta) } : it
+  /* ------------------------------------------------------------
+     Update Item Quantity
+     (Defer side-effect to avoid React state race condition)
+     ------------------------------------------------------------ */
+  function handleQuantityChange(productId, delta) {
+    setCartItems((previousItems) => {
+      const updatedItems = previousItems.map((item) =>
+        item.id === productId
+          ? { ...item, quantity: Math.max(1, (item.quantity || 1) + delta) }
+          : item
       );
-      const q = next.find((x) => x.id === id)?.quantity || 1;
-      setTimeout(() => updateQuantity(id, q), 0); // defer localStorage + event
-      return next;
+
+      const newQuantity = updatedItems.find((x) => x.id === productId)?.quantity || 1;
+      setTimeout(() => updateQuantity(productId, newQuantity), 0);
+      return updatedItems;
     });
-  };
+  }
 
-  // Remove line (also defer side-effect)
-  const handleRemove = (id) => {
-    setItems((prev) => prev.filter((it) => it.id !== id));
-    setTimeout(() => removeFromCart(id), 0);
-  };
+  /* ------------------------------------------------------------
+     Remove Item from Cart
+     (Defer side-effect to keep state updates clean)
+     ------------------------------------------------------------ */
+  function handleRemoveItem(productId) {
+    setCartItems((previousItems) => previousItems.filter((item) => item.id !== productId));
+    setTimeout(() => removeFromCart(productId), 0);
+  }
 
-  // Totals
-  const { subtotal, vat, total } = useMemo(() => computeTotals(items), [items]);
+  /* ------------------------------------------------------------
+     Compute Order Totals
+     ------------------------------------------------------------ */
+  const { subtotal, vat, total } = useMemo(() => computeTotals(cartItems), [cartItems]);
 
+  /* ------------------------------------------------------------
+     Render
+     ------------------------------------------------------------ */
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Back link */}
+      {/* ------------------------------------------------------------
+         Back to Product List
+         ------------------------------------------------------------ */}
       <div className="mb-4">
         <Link href="/products" className="text-red-700 hover:text-red-900 hover:underline">
           &larr; Continue Shopping
@@ -65,21 +91,24 @@ export default function CartPage() {
       <h1 className="mb-6 text-3xl font-bold md:text-4xl">Shopping Cart</h1>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        {/* Left: items */}
+        {/* ------------------------------------------------------------
+           Cart Items Section
+           ------------------------------------------------------------ */}
         <div className="md:col-span-2">
-          {items.length ? (
+          {cartItems.length > 0 ? (
             <ul className="space-y-4">
-              {items.map((it) => {
-                const lineTotal = Number(it.price || 0) * Number(it.quantity || 0);
+              {cartItems.map((item) => {
+                const lineTotal = Number(item.price || 0) * Number(item.quantity || 0);
+
                 return (
-                  <li key={it.id} className="rounded-lg border bg-white p-4 shadow-sm">
+                  <li key={item.id} className="rounded-lg border bg-white p-4 shadow-sm">
                     <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                      {/* Image */}
+                      {/* Product Image */}
                       <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-gray-100 sm:h-20 sm:w-20">
-                        {it.image ? (
+                        {item.image ? (
                           <Image
-                            src={it.image}
-                            alt={it.name}
+                            src={item.image}
+                            alt={item.name}
                             width={96}
                             height={96}
                             className="h-full w-full object-cover"
@@ -90,24 +119,26 @@ export default function CartPage() {
                         )}
                       </div>
 
-                      {/* Name + unit price */}
+                      {/* Product Name and Unit Price */}
                       <div className="flex-1">
-                        <div className="font-medium">{it.name}</div>
-                        <div className="text-primary text-sm">{formatTHB(it.price)}</div>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-primary text-sm">{formatTHB(item.price)}</div>
                       </div>
 
-                      {/* Qty control */}
+                      {/* Quantity Control */}
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => handleQty(it.id, -1)}
+                          onClick={() => handleQuantityChange(item.id, -1)}
                           className="rounded-md bg-gray-100 px-3 py-1.5 hover:bg-gray-200"
                           aria-label="Decrease quantity"
                         >
                           −
                         </button>
-                        <span className="min-w-[2ch] text-center font-semibold">{it.quantity}</span>
+                        <span className="min-w-[2ch] text-center font-semibold">
+                          {item.quantity}
+                        </span>
                         <button
-                          onClick={() => handleQty(it.id, 1)}
+                          onClick={() => handleQuantityChange(item.id, 1)}
                           className="rounded-md bg-gray-100 px-3 py-1.5 hover:bg-gray-200"
                           aria-label="Increase quantity"
                         >
@@ -115,13 +146,13 @@ export default function CartPage() {
                         </button>
                       </div>
 
-                      {/* Line total + delete */}
+                      {/* Line Total and Remove Button */}
                       <div className="ml-auto flex items-center gap-3">
                         <div className="whitespace-nowrap font-semibold">
                           {formatTHB(lineTotal)}
                         </div>
                         <button
-                          onClick={() => handleRemove(it.id)}
+                          onClick={() => handleRemoveItem(item.id)}
                           className="text-primary hover:text-red-800"
                           aria-label="Remove item"
                           title="Remove item"
@@ -141,7 +172,9 @@ export default function CartPage() {
           )}
         </div>
 
-        {/* Right: order summary */}
+        {/* ------------------------------------------------------------
+           Order Summary Section
+           ------------------------------------------------------------ */}
         <aside className="h-fit rounded-lg bg-gray-50 p-6 shadow-md">
           <h2 className="mb-4 text-2xl font-bold">Order Summary</h2>
 
@@ -165,7 +198,7 @@ export default function CartPage() {
             href="/quote/contact-form"
             className="bg-primary mt-4 block w-full rounded-[5px] py-3 text-center font-semibold text-white transition-colors hover:bg-red-700"
           >
-            Proceed to request quote
+            Proceed to Request Quote
           </Link>
         </aside>
       </div>
