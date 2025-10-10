@@ -1,4 +1,5 @@
 "use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
@@ -19,7 +20,9 @@ export default function HomePageContent() {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
 
-  // Fetch categories and products from API
+  /* ------------------------------------------------------------
+     Fetch categories and products from the API
+     ------------------------------------------------------------ */
   useEffect(() => {
     (async () => {
       try {
@@ -41,10 +44,14 @@ export default function HomePageContent() {
 
   return (
     <div className="container mx-auto space-y-16 py-12">
-      {/* ---------- PROMOTIONS ---------- */}
+      {/* ============================================================
+         PROMOTIONS SECTION
+         ============================================================ */}
       <section>
         <h2 className="mb-6 text-3xl font-bold text-gray-900">Promotions</h2>
+
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {/* Main large banner */}
           <div className="overflow-hidden rounded-2xl md:col-span-2">
             <Image
               src={promotionBanners[0]}
@@ -54,6 +61,8 @@ export default function HomePageContent() {
               className="h-full w-full rounded-2xl object-cover transition-transform duration-500 hover:scale-105"
             />
           </div>
+
+          {/* Two smaller banners */}
           <div className="grid gap-6 md:grid-rows-2">
             {promotionBanners.slice(1).map((banner, index) => (
               <Image
@@ -69,10 +78,13 @@ export default function HomePageContent() {
         </div>
       </section>
 
-      {/* ---------- CATEGORIES ---------- */}
+      {/* ============================================================
+         CATEGORIES SECTION
+         ============================================================ */}
       <section>
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-3xl font-bold text-gray-900">Category</h2>
+
           <Link href="/products" className="text-primary font-semibold hover:underline">
             View All →
           </Link>
@@ -81,8 +93,8 @@ export default function HomePageContent() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {categories.slice(0, 8).map((category) => (
             <Link
-              href={`/products?category=${category.id}`}
               key={category.id}
+              href={`/products?category=${category.id}`}
               className="hover:border-primary flex h-40 items-center justify-center rounded-xl border border-gray-200 bg-white text-center shadow-md transition-all hover:shadow-lg"
             >
               <span className="group-hover:text-primary text-xl font-semibold text-gray-800">
@@ -93,47 +105,63 @@ export default function HomePageContent() {
         </div>
       </section>
 
-      {/* ---------- NEW PRODUCTS ---------- */}
+      {/* ============================================================
+         NEW PRODUCTS SECTION
+         ============================================================ */}
       <section>
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-3xl font-bold text-gray-900">New Arrivals</h2>
+
           <Link href="/products" className="text-primary font-semibold hover:underline">
             View All →
           </Link>
         </div>
 
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          {products.slice(0, 8).map((product) => (
-            <Link
-              href={`/products/${product.id}`}
-              key={product.id}
-              className="group overflow-hidden rounded-xl bg-white shadow-md transition-shadow hover:shadow-2xl"
-            >
-              <div className="relative aspect-square">
-                <Image
-                  src={
-                    product.image_path && product.image_path.trim() !== ""
-                      ? product.image_path.startsWith("http")
-                        ? product.image_path
-                        : product.image_path.startsWith("/uploads")
-                          ? product.image_path
-                          : `/uploads/${product.image_path}`
-                      : "https://placehold.co/400x400/png"
-                  }
-                  alt={product.name}
-                  fill
-                  unoptimized
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-              </div>
-              <div className="p-4">
-                <h3 className="group-hover:text-primary text-lg font-semibold text-gray-800">
-                  {product.name}
-                </h3>
-                <p className="text-primary mt-1 font-bold">฿{product.price}</p>
-              </div>
-            </Link>
-          ))}
+          {/* Filter out inactive products and adjust price for hidden ones */}
+          {products
+            .filter((product) => product.status !== "inactive")
+            .slice(0, 8)
+            .map((product) => {
+              // If hide_price is 1, display price as 0
+              const displayPrice = product.hide_price ? 0 : product.price;
+
+              return (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.id}`}
+                  className="group overflow-hidden rounded-xl bg-white shadow-md transition-shadow hover:shadow-2xl"
+                >
+                  {/* Product image */}
+                  <div className="relative aspect-square">
+                    <Image
+                      src={
+                        product.image_url
+                          ? product.image_url
+                          : product.image_path && product.image_path.trim() !== ""
+                            ? product.image_path.startsWith("http")
+                              ? product.image_path
+                              : product.image_path.startsWith("/uploads")
+                                ? product.image_path
+                                : `/uploads/${product.image_path}`
+                            : "/images/placeholder.png"
+                      }
+                      alt={product.name}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                  </div>
+
+                  {/* Product information */}
+                  <div className="p-4">
+                    <h3 className="group-hover:text-primary text-lg font-semibold text-gray-800">
+                      {product.name}
+                    </h3>
+                    <p className="text-primary mt-1 font-bold">฿{displayPrice}</p>
+                  </div>
+                </Link>
+              );
+            })}
         </div>
       </section>
     </div>
