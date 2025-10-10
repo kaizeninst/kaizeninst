@@ -8,7 +8,9 @@ import { uploadToGCS, deleteFromGCS } from "../utils/gcs.js";
 
 const { Product, Category } = models;
 
-// ✅ CREATE PRODUCT
+// ======================================================
+// CREATE PRODUCT
+// ======================================================
 export const createProduct = async (req, res) => {
   try {
     const {
@@ -43,11 +45,14 @@ export const createProduct = async (req, res) => {
 
     res.status(201).json(product);
   } catch (err) {
+    console.error("CREATE PRODUCT ERROR:", err);
     res.status(400).json({ error: err.message });
   }
 };
 
-// ✅ READ ALL (filters + pagination + descendants)
+// ======================================================
+// READ ALL (filters + pagination + descendants)
+// ======================================================
 export const getAllProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -98,7 +103,9 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
-// ✅ READ ONE
+// ======================================================
+// READ ONE
+// ======================================================
 export const getProductById = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id, {
@@ -111,7 +118,9 @@ export const getProductById = async (req, res) => {
   }
 };
 
-// ✅ BULK FETCH (POST /api/products/bulk  { ids: [1,2,3] })
+// ======================================================
+// BULK FETCH
+// ======================================================
 export const getProductsBulk = async (req, res) => {
   try {
     const ids = (req.body?.ids || []).map(Number).filter(Boolean);
@@ -130,20 +139,45 @@ export const getProductsBulk = async (req, res) => {
   }
 };
 
-// ✅ UPDATE PRODUCT
+// ======================================================
+// UPDATE PRODUCT (พร้อมลบรูปเก่าเมื่อมีรูปใหม่)
+// ======================================================
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found" });
 
+    const oldImage = product.image_path;
+    const newImage = req.body.image_path;
+    const mode = process.env.STORAGE_MODE || "local";
+
+    // อัปเดตข้อมูลสินค้า
     await product.update(req.body);
+
+    // ถ้ามีรูปใหม่ และไม่ตรงกับของเดิม → ลบรูปเก่า
+    if (oldImage && newImage && oldImage !== newImage) {
+      if (mode === "gcs") {
+        await deleteFromGCS(oldImage);
+        console.log(`🗑️ Deleted old image from GCS: ${oldImage}`);
+      } else {
+        const localPath = path.join(process.cwd(), "apps/api/public", oldImage);
+        if (fs.existsSync(localPath)) {
+          fs.unlinkSync(localPath);
+          console.log(`🗑️ Deleted old local image: ${oldImage}`);
+        }
+      }
+    }
+
     res.json(product);
   } catch (err) {
+    console.error("UPDATE PRODUCT ERROR:", err);
     res.status(400).json({ error: err.message });
   }
 };
 
-// ✅ DELETE PRODUCT (ลบจาก local หรือ GCS)
+// ======================================================
+// DELETE PRODUCT (ลบจาก local หรือ GCS)
+// ======================================================
 export const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
@@ -153,11 +187,9 @@ export const deleteProduct = async (req, res) => {
 
     if (product.image_path) {
       if (mode === "gcs") {
-        // ลบจาก Google Cloud Storage
         await deleteFromGCS(product.image_path);
         console.log("🗑️ Removed from GCS:", product.image_path);
       } else {
-        // ลบจาก local (dev mode)
         const localPath = path.join(process.cwd(), "apps/api/public", product.image_path);
         if (fs.existsSync(localPath)) {
           fs.unlinkSync(localPath);
@@ -174,7 +206,9 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// ✅ TOGGLE STATUS
+// ======================================================
+// TOGGLE STATUS
+// ======================================================
 export const toggleProductStatus = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
@@ -194,41 +228,44 @@ export const toggleProductStatus = async (req, res) => {
   }
 };
 
-// ✅ UPLOAD IMAGE (supports local + GCS, only image, max 5MB)
+// ======================================================
+// UPLOAD IMAGE (รองรับ local + GCS, จำกัดขนาด 5MB, ลบ temp อัตโนมัติ)
+// ======================================================
 export const uploadProductImage = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const mode = process.env.STORAGE_MODE || "local";
     const mime = req.file.mimetype?.toLowerCase() || "";
     const ext = path.extname(req.file.originalname).toLowerCase();
-
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowed.includes(mime)) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: "Only image files are allowed (jpg, png, webp, gif)" });
     }
+
     if (req.file.size > 5 * 1024 * 1024) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: "Image too large (max 5MB allowed)" });
     }
 
     const newFileName = generateUniqueFileName(req.file.originalname);
+    const mode = process.env.STORAGE_MODE || "local";
     let fileUrl = "";
 
     if (mode === "gcs") {
       // Upload to Google Cloud Storage
       fileUrl = await uploadToGCS(req.file.path, newFileName);
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); // remove temp file
     } else {
-      // Local mode: save to /public/uploads
+      // Save to /public/uploads
       const uploadDir = path.join(process.cwd(), "apps/api/public/uploads");
       if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
       const destPath = path.join(uploadDir, newFileName);
       fs.renameSync(req.file.path, destPath);
       fileUrl = `/uploads/${newFileName}`;
     }
+
+    // ลบ temp หลัง upload
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
     return res.json({ url: fileUrl, storage: mode });
   } catch (err) {
