@@ -8,7 +8,17 @@ export default function ProductCard({ product }) {
       <div className="bg-background group flex h-full flex-col overflow-hidden rounded-[5px] drop-shadow-lg transition hover:shadow-lg">
         <div className="relative h-56 w-full overflow-hidden">
           <Image
-            src={product.image_path}
+            src={
+              product.image_url
+                ? product.image_url
+                : product.image_path && product.image_path.trim() !== ""
+                  ? product.image_path.startsWith("http")
+                    ? product.image_path
+                    : product.image_path.startsWith("/uploads")
+                      ? product.image_path
+                      : `/uploads/${product.image_path}`
+                  : "/images/placeholder.png"
+            }
             alt={product.name}
             width={300}
             height={300}

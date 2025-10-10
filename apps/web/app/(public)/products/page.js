@@ -79,7 +79,14 @@ export default function ProductsPage() {
     })();
   }, [page, limit, searchTerm, status, selectedCategoryId]);
 
-  const pageItems = useMemo(() => items, [items]);
+  const pageItems = useMemo(() => {
+    return (items || [])
+      .filter((p) => p.status !== "inactive")
+      .map((p) => ({
+        ...p,
+        price: p.hide_price ? 0 : p.price,
+      }));
+  }, [items]);
 
   return (
     <div className="container mx-auto p-8">

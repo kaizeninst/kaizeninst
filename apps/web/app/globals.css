@@ -63,10 +63,6 @@
 /* 🧱 BASE STYLE                                              */
 /* ---------------------------------------------------------- */
 
-html {
-  scroll-behavior: smooth;
-}
-
 body {
   @apply bg-background text-foreground font-sans antialiased transition-colors duration-300;
 }
