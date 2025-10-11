@@ -43,7 +43,15 @@ export default function EditProductPage() {
 
         setForm(productData);
         setCategories(catData?.data || []);
-        setPreview(productData?.image_path || null);
+
+        // ✅ ปรับ preview ให้ต่อ /uploads/ อัตโนมัติ ถ้ายังไม่มี
+        setPreview(
+          productData?.image_path
+            ? productData.image_path.startsWith("/uploads/")
+              ? productData.image_path
+              : `/uploads/${productData.image_path}`
+            : null
+        );
       } catch (err) {
         alert("Failed to load product data");
       } finally {
@@ -79,7 +87,7 @@ export default function EditProductPage() {
   };
 
   // -----------------------------
-  // UPLOAD IMAGE
+  // UPLOAD IMAGE (local only)
   // -----------------------------
   const handleUpload = async () => {
     if (!file) return "";
@@ -87,13 +95,16 @@ export default function EditProductPage() {
       setUploading(true);
       const formData = new FormData();
       formData.append("file", file);
+
       const res = await fetch("/api/products/upload", {
         method: "POST",
         body: formData,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
-      return data.url;
+
+      // ✅ backend คืน { filename, url } — เก็บเฉพาะชื่อไฟล์
+      return data.filename;
     } catch (err) {
       alert(err.message);
       return "";
@@ -108,13 +119,18 @@ export default function EditProductPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      let imageUrl = form.image_path;
+      let imageFileName = form.image_path;
+
+      // ถ้ามีการเลือกไฟล์ใหม่ → อัปโหลดและเปลี่ยนชื่อ
       if (file) {
-        const uploaded = await handleUpload();
-        if (uploaded) imageUrl = uploaded;
+        const uploadedName = await handleUpload();
+        if (uploadedName) imageFileName = uploadedName;
       }
 
-      const payload = { ...form, image_path: imageUrl };
+      // ✅ ส่งเฉพาะชื่อไฟล์ให้ backend (ไม่รวม /uploads/)
+      const cleanImage = imageFileName?.replace(/^\/?uploads\//, "") || "";
+
+      const payload = { ...form, image_path: cleanImage };
 
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",

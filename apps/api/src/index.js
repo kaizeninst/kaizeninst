@@ -55,11 +55,9 @@ app.use(
 /* ============================================================
    Static file serving (uploads)
    ============================================================ */
-if (process.env.STORAGE_MODE === "local") {
-  const uploadsDir = path.join(process.cwd(), "public/uploads");
-  app.use("/uploads", express.static(uploadsDir));
-  console.log("[Static] Serving local uploads from:", uploadsDir);
-}
+const uploadsDir = path.join(process.cwd(), "apps/api/public/uploads");
+app.use("/uploads", express.static(uploadsDir));
+console.log("[Static] Serving local uploads from:", uploadsDir);
 
 /* ============================================================
    Health check endpoint

@@ -98,13 +98,11 @@ export default function ViewProductPage() {
             <div className="relative aspect-square overflow-hidden rounded-lg border bg-gray-50">
               <Image
                 src={
-                  product.image_path && product.image_path.trim() !== ""
-                    ? product.image_path.startsWith("http")
-                      ? product.image_path
-                      : product.image_path.startsWith("/uploads")
-                        ? product.image_path
-                        : `/uploads/${product.image_path}`
-                    : "/images/placeholder.png"
+                  p.image_url
+                    ? p.image_url
+                    : p.image_path
+                      ? `/uploads/${p.image_path}`
+                      : "https://placehold.co/400x400"
                 }
                 alt={product.name}
                 fill

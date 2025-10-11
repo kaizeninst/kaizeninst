@@ -205,13 +205,9 @@ export default function ProductsPage() {
                           src={
                             p.image_url
                               ? p.image_url
-                              : p.image_path && p.image_path.trim() !== ""
-                                ? p.image_path.startsWith("http")
-                                  ? p.image_path
-                                  : p.image_path.startsWith("/uploads")
-                                    ? p.image_path
-                                    : `/uploads/${p.image_path}`
-                                : "/images/placeholder.png"
+                              : p.image_path
+                                ? `/uploads/${p.image_path}`
+                                : "https://placehold.co/400x400"
                           }
                           alt={p.name || "Product image"}
                           fill
