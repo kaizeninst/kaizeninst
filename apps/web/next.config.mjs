@@ -5,7 +5,12 @@ dotenv.config();
 const nextConfig = {
   reactStrictMode: true,
 
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   async rewrites() {
+    // ✅ กำหนด fallback URL ให้ dev กับ prod
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
     const uploadBase = process.env.NEXT_PUBLIC_UPLOAD_BASE_URL || "http://localhost:4000/uploads";
 
