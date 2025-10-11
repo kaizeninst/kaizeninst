@@ -1,23 +1,33 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
+
   async rewrites() {
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
+    const uploadBase = process.env.NEXT_PUBLIC_UPLOAD_BASE_URL || "http://localhost:4000/uploads";
+
     return [
       {
-        source: "/uploads/:path*",
-        destination: "http://localhost:4000/uploads/:path*",
+        source: "/api/:path*",
+        destination: `${apiBase}/:path*`,
       },
       {
-        source: "/api/:path*",
-        destination: "http://localhost:4000/api/:path*",
+        source: "/uploads/:path*",
+        destination: `${uploadBase}/:path*`,
       },
     ];
   },
+
   images: {
     remotePatterns: [
       {
-        protocol: "http",
-        hostname: "localhost",
-        port: "4000",
+        protocol: "https",
+        hostname: new URL(
+          process.env.NEXT_PUBLIC_API_BASE_URL || "https://kaizeninst-api.onrender.com"
+        ).hostname,
         pathname: "/uploads/**",
       },
       {
