@@ -1,17 +1,16 @@
 // ============================================================
-//  FILE CONTROLLER (Google Cloud Storage)
+//  FILE CONTROLLER (Local Storage Only)
 // ============================================================
 
 import fs from "fs";
 import path from "path";
-import { uploadToGCS, generateSignedUrl, deleteFromGCS } from "../utils/gcs.js";
 import { generateUniqueFileName } from "../utils/fileName.js";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const ALLOWED_EXT = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
 /* ============================================================
-   Upload image to Google Cloud Storage
+   Upload file to local storage
    ============================================================ */
 export const uploadFile = async (req, res) => {
   try {
@@ -37,43 +36,27 @@ export const uploadFile = async (req, res) => {
         .json({ error: "Only image files are allowed (.jpg, .png, .gif, .webp)" });
     }
 
-    // Generate unique file name and upload to GCS
-    const newFileName = generateUniqueFileName(req.file.originalname);
-    const gcsPath = await uploadToGCS(req.file.path, newFileName);
+    // Generate unique file name and move to uploads/
+    const uploadDir = path.join(process.cwd(), "apps/api/public/uploads");
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-    // Delete temp file after upload
-    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    const newFileName = generateUniqueFileName(req.file.originalname);
+    const destPath = path.join(uploadDir, newFileName);
+
+    fs.renameSync(req.file.path, destPath);
 
     return res.json({
       message: "Image uploaded successfully",
-      path: gcsPath,
+      path: `/uploads/${newFileName}`,
     });
   } catch (err) {
-    console.error("GCS upload error:", err);
+    console.error("Local upload error:", err);
     return res.status(500).json({ error: err.message });
   }
 };
 
 /* ============================================================
-   Generate signed URL for accessing GCS file
-   ============================================================ */
-export const getSignedUrl = async (req, res) => {
-  try {
-    const filePath = req.query.path;
-    if (!filePath) {
-      return res.status(400).json({ error: "Missing ?path= parameter" });
-    }
-
-    const url = await generateSignedUrl(filePath);
-    return res.json({ url });
-  } catch (err) {
-    console.error("Signed URL error:", err);
-    return res.status(500).json({ error: err.message });
-  }
-};
-
-/* ============================================================
-   Delete file from GCS
+   Delete file from local storage
    ============================================================ */
 export const deleteFile = async (req, res) => {
   try {
@@ -82,10 +65,15 @@ export const deleteFile = async (req, res) => {
       return res.status(400).json({ error: "Missing ?path= parameter" });
     }
 
-    await deleteFromGCS(filePath);
-    return res.json({ message: "Image deleted successfully", path: filePath });
+    const localPath = path.join(process.cwd(), "apps/api/public", filePath);
+    if (fs.existsSync(localPath)) {
+      fs.unlinkSync(localPath);
+      return res.json({ message: "Image deleted successfully", path: filePath });
+    } else {
+      return res.status(404).json({ error: "File not found" });
+    }
   } catch (err) {
-    console.error("Delete GCS file error:", err);
+    console.error("Delete local file error:", err);
     return res.status(500).json({ error: err.message });
   }
 };

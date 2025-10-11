@@ -1,5 +1,5 @@
 // ============================================================
-//  PRODUCT CONTROLLER
+//  PRODUCT CONTROLLER (Local Storage Only, store clean filenames)
 // ============================================================
 
 import fs from "fs";
@@ -8,9 +8,10 @@ import { Op } from "sequelize";
 import models from "../models/index.js";
 import { getSelfAndDescendantIds } from "../utils/categoryTree.js";
 import { generateUniqueFileName } from "../utils/fileName.js";
-import { uploadToGCS, deleteFromGCS, generateSignedUrl } from "../utils/gcs.js";
 
 const { Product, Category } = models;
+const BASE_UPLOAD_URL = "/uploads/"; // สำหรับส่งให้ frontend เท่านั้น
+const LOCAL_UPLOAD_DIR = path.join(process.cwd(), "apps/api/public/uploads");
 
 /* ============================================================
    CREATE PRODUCT
@@ -25,7 +26,7 @@ export const createProduct = async (req, res) => {
       hide_price = false,
       stock_quantity = 0,
       description,
-      image_path,
+      image_path, // เช่น "abc123.jpg" (ไม่รวม uploads/)
       manual_file_path,
       status = "active",
     } = req.body;
@@ -33,6 +34,10 @@ export const createProduct = async (req, res) => {
     if (!name || !slug || !price || !category_id) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+
+    // ✅ ล้าง path เผื่อ frontend ส่ง /uploads/ มาผิด
+    const cleanImage = image_path?.replace(/^\/?uploads\//, "") || null;
+    const cleanManual = manual_file_path?.replace(/^\/?uploads\//, "") || null;
 
     const product = await Product.create({
       name,
@@ -42,8 +47,8 @@ export const createProduct = async (req, res) => {
       hide_price,
       stock_quantity,
       description,
-      image_path,
-      manual_file_path,
+      image_path: cleanImage,
+      manual_file_path: cleanManual,
       status,
     });
 
@@ -55,7 +60,7 @@ export const createProduct = async (req, res) => {
 };
 
 /* ============================================================
-   READ ALL PRODUCTS (with filters + pagination + descendants)
+   READ ALL PRODUCTS (with filters + pagination)
    ============================================================ */
 export const getAllProducts = async (req, res) => {
   try {
@@ -97,25 +102,11 @@ export const getAllProducts = async (req, res) => {
       include: [{ model: Category, attributes: ["id", "name", "slug", "parent_id"] }],
     });
 
-    const mode = process.env.STORAGE_MODE || "local";
-    let data = rows;
-
-    // ✅ Generate signed URL if using GCS
-    if (mode === "gcs") {
-      data = await Promise.all(
-        rows.map(async (p) => {
-          const obj = p.toJSON();
-          if (obj.image_path) {
-            try {
-              obj.image_url = await generateSignedUrl(obj.image_path);
-            } catch {
-              obj.image_url = null;
-            }
-          }
-          return obj;
-        })
-      );
-    }
+    const data = rows.map((p) => {
+      const obj = p.toJSON();
+      if (obj.image_path) obj.image_url = BASE_UPLOAD_URL + obj.image_path;
+      return obj;
+    });
 
     return res.json({
       data,
@@ -145,16 +136,8 @@ export const getProductById = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    const mode = process.env.STORAGE_MODE || "local";
     const obj = product.toJSON();
-
-    if (mode === "gcs" && obj.image_path) {
-      try {
-        obj.image_url = await generateSignedUrl(obj.image_path);
-      } catch {
-        obj.image_url = null;
-      }
-    }
+    if (obj.image_path) obj.image_url = BASE_UPLOAD_URL + obj.image_path;
 
     return res.json(obj);
   } catch (err) {
@@ -163,7 +146,7 @@ export const getProductById = async (req, res) => {
 };
 
 /* ============================================================
-   BULK FETCH PRODUCTS
+   BULK FETCH PRODUCTS (by IDs)
    ============================================================ */
 export const getProductsBulk = async (req, res) => {
   try {
@@ -176,24 +159,11 @@ export const getProductsBulk = async (req, res) => {
       order: [["id", "ASC"]],
     });
 
-    const mode = process.env.STORAGE_MODE || "local";
-    let data = rows;
-
-    if (mode === "gcs") {
-      data = await Promise.all(
-        rows.map(async (p) => {
-          const obj = p.toJSON();
-          if (obj.image_path) {
-            try {
-              obj.image_url = await generateSignedUrl(obj.image_path);
-            } catch {
-              obj.image_url = null;
-            }
-          }
-          return obj;
-        })
-      );
-    }
+    const data = rows.map((p) => {
+      const obj = p.toJSON();
+      if (obj.image_path) obj.image_url = BASE_UPLOAD_URL + obj.image_path;
+      return obj;
+    });
 
     return res.json({ data });
   } catch (err) {
@@ -211,26 +181,25 @@ export const updateProduct = async (req, res) => {
     if (!product) return res.status(404).json({ error: "Product not found" });
 
     const oldImage = product.image_path;
-    const newImage = req.body.image_path;
-    const mode = process.env.STORAGE_MODE || "local";
+    const newImage = req.body.image_path?.replace(/^\/?uploads\//, "") || null;
 
-    await product.update(req.body);
+    await product.update({
+      ...req.body,
+      image_path: newImage,
+    });
 
-    // Delete old image if replaced
+    // ลบไฟล์เก่า ถ้ามีการเปลี่ยนชื่อไฟล์
     if (oldImage && newImage && oldImage !== newImage) {
-      if (mode === "gcs") {
-        await deleteFromGCS(oldImage);
-        console.log(`🗑️ Deleted old image from GCS: ${oldImage}`);
-      } else {
-        const localPath = path.join(process.cwd(), "apps/api/public", oldImage);
-        if (fs.existsSync(localPath)) {
-          fs.unlinkSync(localPath);
-          console.log(`🗑️ Deleted old local image: ${oldImage}`);
-        }
+      const localPath = path.join(LOCAL_UPLOAD_DIR, oldImage);
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+        console.log(`🗑️ Deleted old image: ${oldImage}`);
       }
     }
 
-    return res.json(product);
+    const obj = product.toJSON();
+    if (obj.image_path) obj.image_url = BASE_UPLOAD_URL + obj.image_path;
+    return res.json(obj);
   } catch (err) {
     console.error("UPDATE PRODUCT ERROR:", err);
     return res.status(400).json({ error: err.message });
@@ -238,25 +207,18 @@ export const updateProduct = async (req, res) => {
 };
 
 /* ============================================================
-   DELETE PRODUCT (remove from local or GCS)
+   DELETE PRODUCT (remove from local storage)
    ============================================================ */
 export const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ error: "Product not found" });
 
-    const mode = process.env.STORAGE_MODE || "local";
-
     if (product.image_path) {
-      if (mode === "gcs") {
-        await deleteFromGCS(product.image_path);
-        console.log("🗑️ Removed from GCS:", product.image_path);
-      } else {
-        const localPath = path.join(process.cwd(), "apps/api/public", product.image_path);
-        if (fs.existsSync(localPath)) {
-          fs.unlinkSync(localPath);
-          console.log("🗑️ Removed local:", localPath);
-        }
+      const localPath = path.join(LOCAL_UPLOAD_DIR, product.image_path);
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+        console.log("🗑️ Removed local image:", product.image_path);
       }
     }
 
@@ -279,10 +241,14 @@ export const toggleProductStatus = async (req, res) => {
     product.status = product.status === "active" ? "inactive" : "active";
     await product.save();
 
+    const obj = product.toJSON();
+    if (obj.image_path) obj.image_url = BASE_UPLOAD_URL + obj.image_path;
+
     return res.json({
       message: "Product status updated",
       id: product.id,
       status: product.status,
+      image_url: obj.image_url,
     });
   } catch (err) {
     console.error("PATCH /products/:id/toggle error:", err);
@@ -291,7 +257,7 @@ export const toggleProductStatus = async (req, res) => {
 };
 
 /* ============================================================
-   UPLOAD PRODUCT IMAGE (local + GCS)
+   UPLOAD PRODUCT IMAGE (local only)
    ============================================================ */
 export const uploadProductImage = async (req, res) => {
   try {
@@ -303,39 +269,27 @@ export const uploadProductImage = async (req, res) => {
     const ext = path.extname(req.file.originalname).toLowerCase();
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-    // Validate type
     if (!allowed.includes(mime)) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-      return res.status(400).json({
-        error: "Only image files are allowed (jpg, png, webp, gif)",
-      });
+      return res.status(400).json({ error: "Only image files are allowed (jpg, png, webp, gif)" });
     }
 
-    // Validate size
     if (req.file.size > 5 * 1024 * 1024) {
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: "Image too large (max 5MB allowed)" });
     }
 
-    const mode = process.env.STORAGE_MODE || "local";
-    let fileUrl = "";
+    if (!fs.existsSync(LOCAL_UPLOAD_DIR)) fs.mkdirSync(LOCAL_UPLOAD_DIR, { recursive: true });
 
-    if (mode === "gcs") {
-      fileUrl = await uploadToGCS(req.file.path, req.file.originalname);
-    } else {
-      const uploadDir = path.join(process.cwd(), "apps/api/public/uploads");
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    const newFileName = generateUniqueFileName(req.file.originalname);
+    const destPath = path.join(LOCAL_UPLOAD_DIR, newFileName);
+    fs.renameSync(req.file.path, destPath);
 
-      const newFileName = generateUniqueFileName(req.file.originalname);
-      const destPath = path.join(uploadDir, newFileName);
-      fs.renameSync(req.file.path, destPath);
-
-      fileUrl = `/uploads/${newFileName}`;
-    }
-
-    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-
-    return res.json({ url: fileUrl, storage: mode });
+    // ✅ เก็บเฉพาะชื่อไฟล์ใน DB
+    return res.json({
+      filename: newFileName,
+      url: BASE_UPLOAD_URL + newFileName, // สำหรับ preview ที่ frontend
+    });
   } catch (err) {
     console.error("POST /products/upload error:", err);
     return res.status(500).json({ error: err.message });

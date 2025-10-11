@@ -2,13 +2,11 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import { ensureTmpDir } from "../utils/tmp.js";
-import { uploadFile, getSignedUrl, deleteFile } from "../controllers/file.controller.js";
+import { uploadFile, deleteFile } from "../controllers/file.controller.js";
 import { maybeAuth } from "../middleware/maybeAuth.js";
 
 const router = express.Router();
 const upload = multer({ dest: ensureTmpDir() });
-
-router.get("/signed-url", getSignedUrl);
 
 router.post("/upload", maybeAuth, upload.single("file"), uploadFile);
 router.delete("/", maybeAuth, deleteFile);
