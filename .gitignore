@@ -7,9 +7,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# lock files (ถ้าอยากให้ reproducible build ก็เก็บไว้ได้ แต่ส่วนใหญ่ทีมใหญ่จะ ignore)
-pnpm-lock.yaml
-
 # -------------------------
 # Next.js
 # -------------------------
